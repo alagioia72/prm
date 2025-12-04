@@ -19,6 +19,15 @@ Il prototipo include:
 - Dialog per creazione tornei
 - Tema chiaro/scuro
 
+## Tipi di Torneo
+- **Iscrizione a Coppia**: Giocatori si iscrivono in coppia
+- **Iscrizione Individuale**: Giocatori si iscrivono singolarmente (sempre round-robin)
+
+## Formati Torneo
+- **Tabellone (Bracket)**: Eliminazione diretta con fasi
+- **Tutti contro tutti (Round-Robin)**: Ogni partecipante gioca contro tutti
+  - Nei round-robin l'admin definisce l'ordine finale e assegna punti
+
 ## Project Architecture
 
 ### Frontend (client/)
@@ -72,6 +81,7 @@ Il prototipo include:
 - Tornei: Punti moltiplicati (x2, x3, x5) in base al livello torneo
 
 ## Recent Changes
+- 2024-12-04: Aggiunto supporto per tipi di iscrizione (coppia/individuale) e formati (tabellone/round-robin)
 - 2024-12-04: Creato prototipo frontend completo con tutti i componenti e pagine
 - 2024-12-04: Configurato tema con colori verdi (primary) per l'app sportiva
 - 2024-12-04: Aggiunta immagine hero per landing page

@@ -1,9 +1,12 @@
-import { Calendar, Users, MapPin } from "lucide-react";
+import { Calendar, Users, MapPin, User, Users2 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
+
+export type RegistrationType = 'couple' | 'individual';
+export type TournamentFormat = 'bracket' | 'round_robin';
 
 export interface Tournament {
   id: number;
@@ -16,6 +19,8 @@ export interface Tournament {
   currentParticipants: number;
   status: 'open' | 'in_progress' | 'completed';
   pointsMultiplier: number;
+  registrationType: RegistrationType;
+  format: TournamentFormat;
 }
 
 interface TournamentCardProps {
@@ -43,8 +48,19 @@ const statusLabels = {
   completed: 'Concluso',
 };
 
+const registrationTypeLabels = {
+  couple: 'Coppie',
+  individual: 'Individuale',
+};
+
+const formatLabels = {
+  bracket: 'Tabellone',
+  round_robin: 'Tutti vs Tutti',
+};
+
 export function TournamentCard({ tournament, onRegister, onViewDetails, isRegistered }: TournamentCardProps) {
   const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
+  const participantLabel = tournament.registrationType === 'couple' ? 'coppie' : 'giocatori';
   
   return (
     <Card className="flex flex-col hover-elevate" data-testid={`card-tournament-${tournament.id}`}>
@@ -68,6 +84,27 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, isRegist
       </CardHeader>
       
       <CardContent className="flex-1 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          <Badge 
+            variant="outline" 
+            className="gap-1"
+            data-testid={`badge-registration-type-${tournament.id}`}
+          >
+            {tournament.registrationType === 'couple' ? (
+              <Users2 className="h-3 w-3" />
+            ) : (
+              <User className="h-3 w-3" />
+            )}
+            {registrationTypeLabels[tournament.registrationType]}
+          </Badge>
+          <Badge 
+            variant="outline"
+            data-testid={`badge-format-${tournament.id}`}
+          >
+            {formatLabels[tournament.format]}
+          </Badge>
+        </div>
+        
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Calendar className="h-4 w-4 shrink-0" />
           <span data-testid={`text-tournament-date-${tournament.id}`}>
@@ -81,7 +118,7 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, isRegist
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="h-4 w-4 shrink-0" />
           <span>
-            {tournament.currentParticipants}/{tournament.maxParticipants} partecipanti
+            {tournament.currentParticipants}/{tournament.maxParticipants} {participantLabel}
             {spotsLeft > 0 && spotsLeft <= 4 && (
               <span className="text-destructive font-medium"> ({spotsLeft} posti rimasti)</span>
             )}

@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Plus, Calendar, MapPin } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Info } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+
+export type RegistrationType = 'couple' | 'individual';
+export type TournamentFormat = 'bracket' | 'round_robin';
 
 interface CreateTournamentDialogProps {
   onSubmit: (data: {
@@ -29,6 +37,8 @@ interface CreateTournamentDialogProps {
     gender: string;
     maxParticipants: number;
     pointsMultiplier: number;
+    registrationType: RegistrationType;
+    format: TournamentFormat;
   }) => void;
   trigger?: React.ReactNode;
 }
@@ -42,6 +52,14 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
   const [gender, setGender] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(16);
   const [pointsMultiplier, setPointsMultiplier] = useState(2);
+  const [registrationType, setRegistrationType] = useState<RegistrationType>('couple');
+  const [format, setFormat] = useState<TournamentFormat>('bracket');
+
+  useEffect(() => {
+    if (registrationType === 'individual') {
+      setFormat('round_robin');
+    }
+  }, [registrationType]);
 
   const handleSubmit = () => {
     if (!name || !date || !location || !level || !gender) {
@@ -57,6 +75,8 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
       gender,
       maxParticipants,
       pointsMultiplier,
+      registrationType,
+      format,
     });
     setOpen(false);
     resetForm();
@@ -70,6 +90,8 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
     setGender("");
     setMaxParticipants(16);
     setPointsMultiplier(2);
+    setRegistrationType('couple');
+    setFormat('bracket');
   };
 
   return (
@@ -82,7 +104,7 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Crea Nuovo Torneo</DialogTitle>
           <DialogDescription>
@@ -129,6 +151,49 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
+              <Label htmlFor="registrationType">Tipo Iscrizione *</Label>
+              <Select value={registrationType} onValueChange={(v) => setRegistrationType(v as RegistrationType)}>
+                <SelectTrigger id="registrationType" data-testid="select-registration-type">
+                  <SelectValue placeholder="Seleziona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="couple">A Coppia</SelectItem>
+                  <SelectItem value="individual">Individuale</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-1">
+                <Label htmlFor="format">Formato *</Label>
+                {registrationType === 'individual' && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="max-w-xs text-xs">I tornei individuali sono sempre tutti contro tutti</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+              <Select 
+                value={format} 
+                onValueChange={(v) => setFormat(v as TournamentFormat)}
+                disabled={registrationType === 'individual'}
+              >
+                <SelectTrigger id="format" data-testid="select-tournament-format">
+                  <SelectValue placeholder="Seleziona" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bracket">Tabellone</SelectItem>
+                  <SelectItem value="round_robin">Tutti contro tutti</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
               <Label htmlFor="level">Livello *</Label>
               <Select value={level} onValueChange={setLevel}>
                 <SelectTrigger id="level" data-testid="select-tournament-level">
@@ -158,7 +223,9 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="maxParticipants">Max Partecipanti</Label>
+              <Label htmlFor="maxParticipants">
+                Max {registrationType === 'couple' ? 'Coppie' : 'Giocatori'}
+              </Label>
               <Select value={String(maxParticipants)} onValueChange={(v) => setMaxParticipants(Number(v))}>
                 <SelectTrigger id="maxParticipants" data-testid="select-tournament-max">
                   <SelectValue />
@@ -185,6 +252,18 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
               </Select>
             </div>
           </div>
+
+          {format === 'round_robin' && (
+            <div className="p-3 bg-muted/50 rounded-md text-sm text-muted-foreground">
+              <p className="flex items-start gap-2">
+                <Info className="h-4 w-4 mt-0.5 shrink-0" />
+                <span>
+                  Nei tornei tutti contro tutti, al termine delle partite l'amministratore
+                  definirà l'ordine di arrivo finale e assegnerà i punti corrispondenti.
+                </span>
+              </p>
+            </div>
+          )}
         </div>
 
         <DialogFooter>

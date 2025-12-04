@@ -31,6 +31,8 @@ const mockTournaments: Tournament[] = [
     currentParticipants: 12,
     status: 'open',
     pointsMultiplier: 2,
+    registrationType: 'couple',
+    format: 'bracket',
   },
   {
     id: 2,
@@ -43,10 +45,12 @@ const mockTournaments: Tournament[] = [
     currentParticipants: 28,
     status: 'open',
     pointsMultiplier: 3,
+    registrationType: 'couple',
+    format: 'bracket',
   },
   {
     id: 3,
-    name: "Torneo Principianti",
+    name: "Round Robin Principianti",
     date: new Date("2024-04-28"),
     location: "Padel Arena Napoli",
     level: 'beginner',
@@ -55,6 +59,8 @@ const mockTournaments: Tournament[] = [
     currentParticipants: 5,
     status: 'open',
     pointsMultiplier: 1,
+    registrationType: 'individual',
+    format: 'round_robin',
   },
   {
     id: 4,
@@ -67,10 +73,12 @@ const mockTournaments: Tournament[] = [
     currentParticipants: 16,
     status: 'completed',
     pointsMultiplier: 3,
+    registrationType: 'couple',
+    format: 'bracket',
   },
   {
     id: 5,
-    name: "Ladies Open",
+    name: "Ladies Open Round Robin",
     date: new Date("2024-03-08"),
     location: "Tennis Club Firenze",
     level: 'intermediate',
@@ -79,6 +87,8 @@ const mockTournaments: Tournament[] = [
     currentParticipants: 16,
     status: 'in_progress',
     pointsMultiplier: 2,
+    registrationType: 'couple',
+    format: 'round_robin',
   },
 ];
 
@@ -87,12 +97,16 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [levelFilter, setLevelFilter] = useState<string>("all");
   const [genderFilter, setGenderFilter] = useState<string>("all");
+  const [registrationTypeFilter, setRegistrationTypeFilter] = useState<string>("all");
+  const [formatFilter, setFormatFilter] = useState<string>("all");
 
   const filteredTournaments = mockTournaments.filter((t) => {
     if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (levelFilter !== "all" && t.level !== levelFilter) return false;
     if (genderFilter !== "all" && t.gender !== genderFilter) return false;
+    if (registrationTypeFilter !== "all" && t.registrationType !== registrationTypeFilter) return false;
+    if (formatFilter !== "all" && t.format !== formatFilter) return false;
     return true;
   });
 
@@ -152,6 +166,26 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                 <SelectItem value="male">Maschile</SelectItem>
                 <SelectItem value="female">Femminile</SelectItem>
                 <SelectItem value="mixed">Misto</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={registrationTypeFilter} onValueChange={setRegistrationTypeFilter}>
+              <SelectTrigger className="w-[140px]" data-testid="select-registration-type-filter">
+                <SelectValue placeholder="Iscrizione" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutte</SelectItem>
+                <SelectItem value="couple">A Coppia</SelectItem>
+                <SelectItem value="individual">Individuale</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={formatFilter} onValueChange={setFormatFilter}>
+              <SelectTrigger className="w-[140px]" data-testid="select-format-filter">
+                <SelectValue placeholder="Formato" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tutti</SelectItem>
+                <SelectItem value="bracket">Tabellone</SelectItem>
+                <SelectItem value="round_robin">Tutti vs Tutti</SelectItem>
               </SelectContent>
             </Select>
           </div>
