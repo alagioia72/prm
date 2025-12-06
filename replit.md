@@ -80,7 +80,17 @@ Il prototipo include:
 - Partite singole: Punti base
 - Tornei: Punti moltiplicati (x2, x3, x5) in base al livello torneo
 
+## Gestione Multi-Sede
+- **Catena di club**: Il sistema supporta più sedi/club nella stessa catena
+- **Gestione sedi**: Solo gli amministratori possono creare/modificare sedi
+- **Affiliazione giocatore**: Ogni giocatore appartiene a un solo club
+- **Partecipazione tornei**: Giocatori possono partecipare ai tornei di tutte le sedi
+- **Classifiche doppie**: 
+  - Globale: tutti i giocatori di tutte le sedi
+  - Locale: solo i giocatori di una specifica sede
+
 ## Recent Changes
+- 2024-12-06: Aggiunta gestione multi-sede (club chain) con classifiche globali/locali
 - 2024-12-04: Aggiunto supporto per tipi di iscrizione (coppia/individuale) e formati (tabellone/round-robin)
 - 2024-12-04: Creato prototipo frontend completo con tutti i componenti e pagine
 - 2024-12-04: Configurato tema con colori verdi (primary) per l'app sportiva

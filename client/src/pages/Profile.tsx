@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { User, Trophy, Calendar, Target, TrendingUp, Edit, Save } from "lucide-react";
+import { User, Trophy, Calendar, Target, TrendingUp, Edit, Save, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -27,6 +26,13 @@ interface ProfileProps {
 }
 
 // todo: remove mock functionality
+const mockClub = {
+  id: 1,
+  name: "Padel Club Milano Centro",
+  city: "Milano",
+  address: "Via Montenapoleone 15",
+};
+
 const mockMatches: MatchResult[] = [
   {
     id: 1,
@@ -112,6 +118,25 @@ export default function Profile({ user }: ProfileProps) {
                     </Badge>
                   </div>
                 </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Building2 className="h-5 w-5" />
+                  Sede di Affiliazione
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  <p className="font-medium" data-testid="text-club-name">{mockClub.name}</p>
+                  <p className="text-sm text-muted-foreground">{mockClub.address}</p>
+                  <p className="text-sm text-muted-foreground">{mockClub.city}</p>
+                </div>
+                <p className="text-xs text-muted-foreground mt-4">
+                  Puoi partecipare ai tornei di tutte le sedi della catena
+                </p>
               </CardContent>
             </Card>
 
