@@ -1,4 +1,4 @@
-import { Calendar, Users, MapPin, User, Users2 } from "lucide-react";
+import { Calendar, Users, MapPin, User, Users2, Star } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -79,7 +79,14 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, isRegist
         <div className="flex flex-wrap gap-2 mt-2">
           <Badge variant="outline">{levelLabels[tournament.level]}</Badge>
           <Badge variant="outline">{genderLabels[tournament.gender]}</Badge>
-          <Badge variant="secondary">x{tournament.pointsMultiplier} punti</Badge>
+          <Badge 
+            variant="secondary" 
+            className="gap-1"
+            data-testid={`badge-multiplier-${tournament.id}`}
+          >
+            <Star className="h-3 w-3" />
+            x{tournament.pointsMultiplier % 1 === 0 ? tournament.pointsMultiplier : tournament.pointsMultiplier.toFixed(1)}
+          </Badge>
         </div>
       </CardHeader>
       

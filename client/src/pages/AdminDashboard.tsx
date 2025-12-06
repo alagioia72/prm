@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { Shield, Users, Calendar, Trophy, Target, Search, Building2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Shield, Users, Calendar, Trophy, Target, Search, Building2, Star, Save, RotateCcw } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { StatsCard } from "@/components/StatsCard";
 import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { ClubCard, type Club } from "@/components/ClubCard";
 import { CreateTournamentDialog } from "@/components/CreateTournamentDialog";
 import { CreateClubDialog } from "@/components/CreateClubDialog";
+import { useToast } from "@/hooks/use-toast";
 
 // todo: remove mock functionality
 const mockTournaments: Tournament[] = [
@@ -112,9 +114,37 @@ const levelLabels = {
   advanced: 'Avanzato',
 };
 
+interface ScoringEntry {
+  position: number;
+  points: number;
+}
+
+const defaultScoringEntries: ScoringEntry[] = [
+  { position: 1, points: 100 },
+  { position: 2, points: 80 },
+  { position: 3, points: 65 },
+  { position: 4, points: 55 },
+  { position: 5, points: 45 },
+  { position: 6, points: 40 },
+  { position: 7, points: 35 },
+  { position: 8, points: 30 },
+  { position: 9, points: 25 },
+  { position: 10, points: 22 },
+  { position: 11, points: 20 },
+  { position: 12, points: 18 },
+  { position: 13, points: 16 },
+  { position: 14, points: 14 },
+  { position: 15, points: 12 },
+  { position: 16, points: 11 },
+];
+
 export default function AdminDashboard() {
   const [search, setSearch] = useState("");
   const [clubSearch, setClubSearch] = useState("");
+  const [scoringEntries, setScoringEntries] = useState<ScoringEntry[]>(defaultScoringEntries);
+  const [participationPoints, setParticipationPoints] = useState(10);
+  const [isScoringDirty, setIsScoringDirty] = useState(false);
+  const { toast } = useToast();
 
   const totalPlayers = mockClubs.reduce((sum, club) => sum + club.playersCount, 0);
 
@@ -178,6 +208,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="players" className="gap-2" data-testid="tab-admin-players">
               <Users className="h-4 w-4" />
               Giocatori
+            </TabsTrigger>
+            <TabsTrigger value="scoring" className="gap-2" data-testid="tab-admin-scoring">
+              <Star className="h-4 w-4" />
+              Punteggi
             </TabsTrigger>
           </TabsList>
 
@@ -274,6 +308,144 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                   ))}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="scoring" className="space-y-6">
+            <Card>
+              <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5" />
+                    Tabella Punteggi Default
+                  </CardTitle>
+                  <CardDescription className="mt-1.5">
+                    Configura i punti base assegnati per ogni posizione finale nei tornei
+                  </CardDescription>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    disabled={!isScoringDirty}
+                    onClick={() => {
+                      setScoringEntries(defaultScoringEntries);
+                      setParticipationPoints(10);
+                      setIsScoringDirty(false);
+                    }}
+                    data-testid="button-reset-scoring"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    Ripristina
+                  </Button>
+                  <Button 
+                    size="sm"
+                    disabled={!isScoringDirty}
+                    onClick={() => {
+                      setIsScoringDirty(false);
+                      toast({
+                        title: "Punteggi salvati",
+                        description: "La tabella punteggi è stata aggiornata con successo",
+                      });
+                    }}
+                    data-testid="button-save-scoring"
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Salva
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-3">
+                  {scoringEntries.map((entry) => (
+                    <div key={entry.position} className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">
+                        {entry.position}° Posto
+                      </Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={entry.points}
+                        onChange={(e) => {
+                          const newPoints = parseInt(e.target.value) || 0;
+                          setScoringEntries(prev => 
+                            prev.map(en => 
+                              en.position === entry.position 
+                                ? { ...en, points: newPoints } 
+                                : en
+                            )
+                          );
+                          setIsScoringDirty(true);
+                        }}
+                        className="text-center"
+                        data-testid={`input-points-position-${entry.position}`}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t pt-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+                    <div className="space-y-1.5 w-full sm:w-auto">
+                      <Label htmlFor="participation-points" className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        Punti Partecipazione
+                      </Label>
+                      <Input
+                        id="participation-points"
+                        type="number"
+                        min={0}
+                        value={participationPoints}
+                        onChange={(e) => {
+                          setParticipationPoints(parseInt(e.target.value) || 0);
+                          setIsScoringDirty(true);
+                        }}
+                        className="w-full sm:w-32"
+                        data-testid="input-participation-points"
+                      />
+                    </div>
+                    <p className="text-sm text-muted-foreground pb-2">
+                      Punti assegnati ai giocatori classificati dal 17° posto in avanti
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t pt-6">
+                  <h4 className="font-medium mb-3">Anteprima con Moltiplicatore Torneo</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {[1, 1.5, 2].map((multiplier) => (
+                      <Card key={multiplier} className="bg-muted/50">
+                        <CardHeader className="pb-2">
+                          <CardTitle className="text-sm flex items-center justify-between gap-2">
+                            <span>Moltiplicatore x{multiplier}</span>
+                            {multiplier === 1 && <Badge variant="secondary" className="text-xs">Base</Badge>}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-sm">
+                          <div className="space-y-1">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">1° posto:</span>
+                              <span className="font-medium">{Math.round(scoringEntries[0].points * multiplier)} pt</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">2° posto:</span>
+                              <span className="font-medium">{Math.round(scoringEntries[1].points * multiplier)} pt</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">3° posto:</span>
+                              <span className="font-medium">{Math.round(scoringEntries[2].points * multiplier)} pt</span>
+                            </div>
+                            <div className="flex justify-between border-t pt-1 mt-1">
+                              <span className="text-muted-foreground">Partecipazione:</span>
+                              <span className="font-medium">{Math.round(participationPoints * multiplier)} pt</span>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
               </CardContent>
             </Card>
