@@ -77,8 +77,11 @@ Il prototipo include:
 2. **Amministratore**: Tutte le funzionalità giocatore + creazione tornei, gestione utenti
 
 ## Scoring System
-- Partite singole: Punti base
-- Tornei: Punti moltiplicati (x2, x3, x5) in base al livello torneo
+- **Profili punteggio configurabili**: Admin può definire punti per le prime 16 posizioni
+- **Punti partecipazione**: Per giocatori oltre la 16° posizione
+- **Moltiplicatori decimali**: Ogni torneo ha un moltiplicatore (0.1-10x) che moltiplica i punti base
+- **Preview in tempo reale**: La tab Punteggi mostra anteprima dei punti con moltiplicatori x1, x1.5, x2
+- **Default**: 1°=100pt, 2°=80pt, 3°=65pt, etc. Partecipazione=10pt
 
 ## Gestione Multi-Sede
 - **Catena di club**: Il sistema supporta più sedi/club nella stessa catena
@@ -90,6 +93,9 @@ Il prototipo include:
   - Locale: solo i giocatori di una specifica sede
 
 ## Recent Changes
+- 2024-12-06: Aggiunto sistema punteggi configurabile con profili, 16 posizioni + punti partecipazione
+- 2024-12-06: Tab "Punteggi" in admin dashboard con tabella editabile e preview moltiplicatori
+- 2024-12-06: Moltiplicatore torneo con supporto decimali (0.1-10x, step 0.1)
 - 2024-12-06: Aggiunta gestione multi-sede (club chain) con classifiche globali/locali
 - 2024-12-04: Aggiunto supporto per tipi di iscrizione (coppia/individuale) e formati (tabellone/round-robin)
 - 2024-12-04: Creato prototipo frontend completo con tutti i componenti e pagine
