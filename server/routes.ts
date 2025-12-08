@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertClubSchema, insertScoringProfileSchema, insertMatchSchema } from "@shared/schema";
+import { insertClubSchema, insertScoringProfileSchema, insertMatchSchema, insertTournamentSchema, insertTournamentResultSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -156,6 +156,106 @@ export async function registerRoutes(
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/tournaments", async (req, res) => {
+    const tournaments = await storage.getTournaments();
+    res.json(tournaments);
+  });
+
+  app.get("/api/tournaments/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const tournament = await storage.getTournament(id);
+    if (!tournament) {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+    res.json(tournament);
+  });
+
+  app.post("/api/tournaments", async (req, res) => {
+    try {
+      const data = insertTournamentSchema.parse(req.body);
+      const tournament = await storage.createTournament(data);
+      res.status(201).json(tournament);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.patch("/api/tournaments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const tournament = await storage.updateTournament(id, req.body);
+      if (!tournament) {
+        return res.status(404).json({ error: "Tournament not found" });
+      }
+      res.json(tournament);
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/tournaments/:id/results", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const results = await storage.getTournamentResults(id);
+    res.json(results);
+  });
+
+  app.post("/api/tournaments/:id/results", async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      const tournament = await storage.getTournament(tournamentId);
+      if (!tournament) {
+        return res.status(404).json({ error: "Tournament not found" });
+      }
+
+      const resultsSchema = z.array(z.object({
+        position: z.number().min(1),
+        playerId: z.string().optional(),
+        player2Id: z.string().optional(),
+        basePoints: z.number().min(0),
+        multiplier: z.number().min(0),
+        finalPoints: z.number().min(0),
+      }));
+      
+      const resultsData = resultsSchema.parse(req.body);
+      
+      await storage.deleteTournamentResults(tournamentId);
+      
+      const insertResults = resultsData.map(r => ({
+        tournamentId,
+        position: r.position,
+        playerId: r.playerId,
+        player2Id: r.player2Id,
+        basePoints: r.basePoints,
+        multiplier: r.multiplier,
+        finalPoints: r.finalPoints,
+      }));
+      
+      const results = await storage.saveTournamentResults(tournamentId, insertResults);
+      
+      await storage.updateTournament(tournamentId, { status: "completed" });
+      
+      res.status(201).json(results);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/tournaments/:id/results", async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      await storage.deleteTournamentResults(tournamentId);
+      res.json({ success: true });
+    } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }
   });

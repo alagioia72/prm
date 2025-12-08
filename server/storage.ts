@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation } from "@shared/schema";
+import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -25,6 +25,15 @@ export interface IStorage {
   getMatch(id: number): Promise<Match | undefined>;
   createMatch(match: InsertMatch): Promise<Match>;
   calculateMatchPoints(setsPlayed: 2 | 3): Promise<MatchPointsCalculation>;
+  
+  getTournaments(): Promise<Tournament[]>;
+  getTournament(id: number): Promise<Tournament | undefined>;
+  createTournament(tournament: InsertTournament): Promise<Tournament>;
+  updateTournament(id: number, updates: Partial<InsertTournament>): Promise<Tournament | undefined>;
+  
+  getTournamentResults(tournamentId: number): Promise<TournamentResult[]>;
+  saveTournamentResults(tournamentId: number, results: InsertTournamentResult[]): Promise<TournamentResult[]>;
+  deleteTournamentResults(tournamentId: number): Promise<void>;
 }
 
 export class MemStorage implements IStorage {
@@ -33,10 +42,14 @@ export class MemStorage implements IStorage {
   private scoringProfiles: Map<number, ScoringProfile>;
   private scoringEntries: Map<number, ScoringEntry[]>;
   private matches: Map<number, Match>;
+  private tournaments: Map<number, Tournament>;
+  private tournamentResults: Map<number, TournamentResult[]>;
   private nextClubId = 1;
   private nextProfileId = 1;
   private nextEntryId = 1;
   private nextMatchId = 1;
+  private nextTournamentId = 1;
+  private nextTournamentResultId = 1;
 
   constructor() {
     this.users = new Map();
@@ -44,6 +57,8 @@ export class MemStorage implements IStorage {
     this.scoringProfiles = new Map();
     this.scoringEntries = new Map();
     this.matches = new Map();
+    this.tournaments = new Map();
+    this.tournamentResults = new Map();
     this.initializeDefaultData();
   }
 
@@ -251,6 +266,70 @@ export class MemStorage implements IStorage {
       divisor,
       pointsAwarded,
     };
+  }
+
+  async getTournaments(): Promise<Tournament[]> {
+    return Array.from(this.tournaments.values()).sort((a, b) => 
+      new Date(b.startDate).getTime() - new Date(a.startDate).getTime()
+    );
+  }
+
+  async getTournament(id: number): Promise<Tournament | undefined> {
+    return this.tournaments.get(id);
+  }
+
+  async createTournament(insertTournament: InsertTournament): Promise<Tournament> {
+    const id = this.nextTournamentId++;
+    const tournament: Tournament = {
+      id,
+      name: insertTournament.name,
+      clubId: insertTournament.clubId,
+      startDate: insertTournament.startDate,
+      endDate: insertTournament.endDate ?? null,
+      registrationType: insertTournament.registrationType ?? "couple",
+      format: insertTournament.format ?? "bracket",
+      gender: insertTournament.gender ?? "mixed",
+      level: insertTournament.level ?? "intermediate",
+      maxParticipants: insertTournament.maxParticipants ?? 16,
+      pointsMultiplier: insertTournament.pointsMultiplier ?? 1.0,
+      scoringProfileId: insertTournament.scoringProfileId ?? null,
+      status: insertTournament.status ?? "upcoming",
+      createdAt: new Date(),
+    };
+    this.tournaments.set(id, tournament);
+    return tournament;
+  }
+
+  async updateTournament(id: number, updates: Partial<InsertTournament>): Promise<Tournament | undefined> {
+    const tournament = this.tournaments.get(id);
+    if (!tournament) return undefined;
+    const updated = { ...tournament, ...updates };
+    this.tournaments.set(id, updated);
+    return updated;
+  }
+
+  async getTournamentResults(tournamentId: number): Promise<TournamentResult[]> {
+    return this.tournamentResults.get(tournamentId) || [];
+  }
+
+  async saveTournamentResults(tournamentId: number, results: InsertTournamentResult[]): Promise<TournamentResult[]> {
+    const savedResults: TournamentResult[] = results.map(r => ({
+      id: this.nextTournamentResultId++,
+      tournamentId,
+      position: r.position,
+      playerId: r.playerId ?? null,
+      player2Id: r.player2Id ?? null,
+      basePoints: r.basePoints,
+      multiplier: r.multiplier ?? 1.0,
+      finalPoints: r.finalPoints,
+      createdAt: new Date(),
+    }));
+    this.tournamentResults.set(tournamentId, savedResults);
+    return savedResults;
+  }
+
+  async deleteTournamentResults(tournamentId: number): Promise<void> {
+    this.tournamentResults.delete(tournamentId);
   }
 }
 

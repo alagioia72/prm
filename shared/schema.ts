@@ -134,3 +134,34 @@ export interface MatchPointsCalculation {
   divisor: 5 | 6;
   pointsAwarded: number;
 }
+
+export const tournamentResults = pgTable("tournament_results", {
+  id: serial("id").primaryKey(),
+  tournamentId: integer("tournament_id").notNull(),
+  position: integer("position").notNull(),
+  playerId: text("player_id"),
+  player2Id: text("player2_id"),
+  basePoints: integer("base_points").notNull(),
+  multiplier: real("multiplier").notNull().default(1.0),
+  finalPoints: integer("final_points").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertTournamentResultSchema = createInsertSchema(tournamentResults).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTournamentResult = z.infer<typeof insertTournamentResultSchema>;
+export type TournamentResult = typeof tournamentResults.$inferSelect;
+
+export interface TournamentRanking {
+  position: number;
+  playerId?: string;
+  player2Id?: string;
+  playerName?: string;
+  player2Name?: string;
+  basePoints: number;
+  multiplier: number;
+  finalPoints: number;
+}
