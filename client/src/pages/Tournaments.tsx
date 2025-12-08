@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { CreateTournamentDialog } from "@/components/CreateTournamentDialog";
+import { TournamentDetailsDialog } from "@/components/TournamentDetailsDialog";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -141,6 +142,8 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [rankingDialogOpen, setRankingDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsTournament, setDetailsTournament] = useState<Tournament | null>(null);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [positionsCount, setPositionsCount] = useState(8);
   
@@ -156,6 +159,9 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/tournaments'] });
+      if (selectedTournament) {
+        queryClient.invalidateQueries({ queryKey: ['/api/tournaments', selectedTournament.id, 'results'] });
+      }
       toast({
         title: "Classifica salvata",
         description: "I punti sono stati assegnati ai giocatori",
@@ -192,6 +198,19 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
     setRankings([]);
     setPositionsCount(8);
     setRankingDialogOpen(true);
+  };
+
+  const handleViewDetails = (tournamentId: number) => {
+    const tournament = mockTournaments.find(t => t.id === tournamentId);
+    if (tournament) {
+      setDetailsTournament(tournament);
+      setDetailsDialogOpen(true);
+    }
+  };
+
+  const handleEditRankingFromDetails = (tournament: Tournament) => {
+    setDetailsDialogOpen(false);
+    handleAssignRanking(tournament);
   };
 
   const getPointsForPosition = (position: number): number => {
@@ -414,7 +433,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                     key={tournament.id}
                     tournament={tournament}
                     onRegister={(id) => console.log('Register for:', id)}
-                    onViewDetails={(id) => console.log('View details:', id)}
+                    onViewDetails={handleViewDetails}
                     isAdmin={isAdmin}
                     onAssignRanking={handleAssignRanking}
                   />
@@ -434,7 +453,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                   <TournamentCard
                     key={tournament.id}
                     tournament={tournament}
-                    onViewDetails={(id) => console.log('View details:', id)}
+                    onViewDetails={handleViewDetails}
                     isAdmin={isAdmin}
                     onAssignRanking={handleAssignRanking}
                   />
@@ -454,7 +473,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                   <TournamentCard
                     key={tournament.id}
                     tournament={tournament}
-                    onViewDetails={(id) => console.log('View details:', id)}
+                    onViewDetails={handleViewDetails}
                     isAdmin={isAdmin}
                     onAssignRanking={handleAssignRanking}
                   />
@@ -613,6 +632,14 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      <TournamentDetailsDialog
+        tournament={detailsTournament}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        isAdmin={isAdmin}
+        onEditRanking={handleEditRankingFromDetails}
+      />
     </div>
   );
 }
