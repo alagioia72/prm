@@ -83,6 +83,14 @@ Il prototipo include:
 - **Preview in tempo reale**: La tab Punteggi mostra anteprima dei punti con moltiplicatori x1, x1.5, x2
 - **Default**: 1°=100pt, 2°=80pt, 3°=65pt, etc. Partecipazione=10pt
 
+## Partite Libere (Free Matches)
+- I giocatori possono registrare partite giocate fuori dai tornei
+- Punti calcolati automaticamente in base al numero di set:
+  - **2 set**: 1/5 dei punti del 1° classificato (100/5 = 20 pt)
+  - **3 set**: 1/6 dei punti del 1° classificato (100/6 ≈ 17 pt)
+- La pagina "Le Mie Partite" mostra lo storico completo
+- Ogni partita mostra data, squadre, punteggi e punti assegnati
+
 ## Gestione Multi-Sede
 - **Catena di club**: Il sistema supporta più sedi/club nella stessa catena
 - **Gestione sedi**: Solo gli amministratori possono creare/modificare sedi
@@ -93,6 +101,9 @@ Il prototipo include:
   - Locale: solo i giocatori di una specifica sede
 
 ## Recent Changes
+- 2024-12-08: Implementato sistema partite libere (matches table + CRUD API)
+- 2024-12-08: Dialog registrazione partita con calcolo punti automatico (1/5 per 2 set, 1/6 per 3 set)
+- 2024-12-08: Pagina "Le Mie Partite" connessa al backend per visualizzazione partite reali
 - 2024-12-06: Aggiunto sistema punteggi configurabile con profili, 16 posizioni + punti partecipazione
 - 2024-12-06: Tab "Punteggi" in admin dashboard con tabella editabile e preview moltiplicatori
 - 2024-12-06: Moltiplicatore torneo con supporto decimali (0.1-10x, step 0.1)
