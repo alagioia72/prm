@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub } from "@shared/schema";
+import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -18,6 +18,13 @@ export interface IStorage {
   updateScoringProfile(id: number, profile: Partial<InsertScoringProfile>): Promise<ScoringProfile | undefined>;
   setScoringEntries(profileId: number, entries: { position: number; points: number }[]): Promise<ScoringEntry[]>;
   setDefaultProfile(id: number): Promise<void>;
+  
+  getMatches(): Promise<Match[]>;
+  getMatchesByPlayer(playerId: string): Promise<Match[]>;
+  getMatchesByClub(clubId: number): Promise<Match[]>;
+  getMatch(id: number): Promise<Match | undefined>;
+  createMatch(match: InsertMatch): Promise<Match>;
+  calculateMatchPoints(setsPlayed: 2 | 3): Promise<MatchPointsCalculation>;
 }
 
 export class MemStorage implements IStorage {
@@ -25,15 +32,18 @@ export class MemStorage implements IStorage {
   private clubs: Map<number, Club>;
   private scoringProfiles: Map<number, ScoringProfile>;
   private scoringEntries: Map<number, ScoringEntry[]>;
+  private matches: Map<number, Match>;
   private nextClubId = 1;
   private nextProfileId = 1;
   private nextEntryId = 1;
+  private nextMatchId = 1;
 
   constructor() {
     this.users = new Map();
     this.clubs = new Map();
     this.scoringProfiles = new Map();
     this.scoringEntries = new Map();
+    this.matches = new Map();
     this.initializeDefaultData();
   }
 
@@ -177,6 +187,70 @@ export class MemStorage implements IStorage {
     for (const [profileId, profile] of entries) {
       this.scoringProfiles.set(profileId, { ...profile, isDefault: profileId === id });
     }
+  }
+
+  async getMatches(): Promise<Match[]> {
+    return Array.from(this.matches.values()).sort((a, b) => 
+      new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime()
+    );
+  }
+
+  async getMatchesByPlayer(playerId: string): Promise<Match[]> {
+    return Array.from(this.matches.values()).filter(match =>
+      match.team1Player1Id === playerId ||
+      match.team1Player2Id === playerId ||
+      match.team2Player1Id === playerId ||
+      match.team2Player2Id === playerId
+    ).sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
+  }
+
+  async getMatchesByClub(clubId: number): Promise<Match[]> {
+    return Array.from(this.matches.values()).filter(match => match.clubId === clubId)
+      .sort((a, b) => new Date(b.playedAt).getTime() - new Date(a.playedAt).getTime());
+  }
+
+  async getMatch(id: number): Promise<Match | undefined> {
+    return this.matches.get(id);
+  }
+
+  async createMatch(insertMatch: InsertMatch): Promise<Match> {
+    const id = this.nextMatchId++;
+    const match: Match = {
+      id,
+      clubId: insertMatch.clubId,
+      playedAt: insertMatch.playedAt ?? new Date(),
+      team1Player1Id: insertMatch.team1Player1Id,
+      team1Player2Id: insertMatch.team1Player2Id ?? null,
+      team2Player1Id: insertMatch.team2Player1Id,
+      team2Player2Id: insertMatch.team2Player2Id ?? null,
+      set1Team1: insertMatch.set1Team1,
+      set1Team2: insertMatch.set1Team2,
+      set2Team1: insertMatch.set2Team1,
+      set2Team2: insertMatch.set2Team2,
+      set3Team1: insertMatch.set3Team1 ?? null,
+      set3Team2: insertMatch.set3Team2 ?? null,
+      setsPlayed: insertMatch.setsPlayed ?? 2,
+      winnerTeam: insertMatch.winnerTeam,
+      pointsAwarded: insertMatch.pointsAwarded,
+      createdAt: new Date(),
+    };
+    this.matches.set(id, match);
+    return match;
+  }
+
+  async calculateMatchPoints(setsPlayed: 2 | 3): Promise<MatchPointsCalculation> {
+    const defaultProfile = await this.getDefaultScoringProfile();
+    const firstPlaceEntry = defaultProfile?.entries.find(e => e.position === 1);
+    const basePoints = firstPlaceEntry?.points ?? 100;
+    const divisor = setsPlayed === 2 ? 5 : 6;
+    const pointsAwarded = Math.round(basePoints / divisor);
+    
+    return {
+      basePoints,
+      setsPlayed,
+      divisor,
+      pointsAwarded,
+    };
   }
 }
 

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertClubSchema, insertScoringProfileSchema } from "@shared/schema";
+import { insertClubSchema, insertScoringProfileSchema, insertMatchSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(
@@ -109,6 +109,53 @@ export async function registerRoutes(
       await storage.setDefaultProfile(id);
       res.json({ success: true });
     } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/matches", async (req, res) => {
+    const matches = await storage.getMatches();
+    res.json(matches);
+  });
+
+  app.get("/api/matches/player/:playerId", async (req, res) => {
+    const matches = await storage.getMatchesByPlayer(req.params.playerId);
+    res.json(matches);
+  });
+
+  app.get("/api/matches/club/:clubId", async (req, res) => {
+    const clubId = parseInt(req.params.clubId);
+    const matches = await storage.getMatchesByClub(clubId);
+    res.json(matches);
+  });
+
+  app.get("/api/matches/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const match = await storage.getMatch(id);
+    if (!match) {
+      return res.status(404).json({ error: "Match not found" });
+    }
+    res.json(match);
+  });
+
+  app.get("/api/matches/calculate-points/:sets", async (req, res) => {
+    const sets = parseInt(req.params.sets);
+    if (sets !== 2 && sets !== 3) {
+      return res.status(400).json({ error: "Sets must be 2 or 3" });
+    }
+    const calculation = await storage.calculateMatchPoints(sets as 2 | 3);
+    res.json(calculation);
+  });
+
+  app.post("/api/matches", async (req, res) => {
+    try {
+      const data = insertMatchSchema.parse(req.body);
+      const match = await storage.createMatch(data);
+      res.status(201).json(match);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
       res.status(500).json({ error: "Internal server error" });
     }
   });

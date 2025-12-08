@@ -89,6 +89,34 @@ export const insertTournamentSchema = createInsertSchema(tournaments).omit({
 export type InsertTournament = z.infer<typeof insertTournamentSchema>;
 export type Tournament = typeof tournaments.$inferSelect;
 
+export const matches = pgTable("matches", {
+  id: serial("id").primaryKey(),
+  clubId: integer("club_id").notNull(),
+  playedAt: timestamp("played_at").notNull().defaultNow(),
+  team1Player1Id: text("team1_player1_id").notNull(),
+  team1Player2Id: text("team1_player2_id"),
+  team2Player1Id: text("team2_player1_id").notNull(),
+  team2Player2Id: text("team2_player2_id"),
+  set1Team1: integer("set1_team1").notNull(),
+  set1Team2: integer("set1_team2").notNull(),
+  set2Team1: integer("set2_team1").notNull(),
+  set2Team2: integer("set2_team2").notNull(),
+  set3Team1: integer("set3_team1"),
+  set3Team2: integer("set3_team2"),
+  setsPlayed: integer("sets_played").notNull().default(2),
+  winnerTeam: integer("winner_team").notNull(),
+  pointsAwarded: integer("points_awarded").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertMatchSchema = createInsertSchema(matches).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertMatch = z.infer<typeof insertMatchSchema>;
+export type Match = typeof matches.$inferSelect;
+
 export interface ScoringProfileWithEntries extends ScoringProfile {
   entries: ScoringEntry[];
 }
@@ -98,4 +126,11 @@ export interface ScoreCalculation {
   basePoints: number;
   multiplier: number;
   finalPoints: number;
+}
+
+export interface MatchPointsCalculation {
+  basePoints: number;
+  setsPlayed: 2 | 3;
+  divisor: 5 | 6;
+  pointsAwarded: number;
 }
