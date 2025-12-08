@@ -101,6 +101,10 @@ Il prototipo include:
   - Locale: solo i giocatori di una specifica sede
 
 ## Recent Changes
+- 2024-12-08: Implementato sistema assegnazione classifica tornei da parte degli amministratori
+- 2024-12-08: TournamentDetailsDialog mostra classifica finale con nomi giocatori e punti
+- 2024-12-08: Admin può modificare classifica in qualsiasi momento dai dettagli torneo
+- 2024-12-08: Punti calcolati automaticamente (punti base × moltiplicatore torneo)
 - 2024-12-08: Implementato sistema partite libere (matches table + CRUD API)
 - 2024-12-08: Dialog registrazione partita con calcolo punti automatico (1/5 per 2 set, 1/6 per 3 set)
 - 2024-12-08: Pagina "Le Mie Partite" connessa al backend per visualizzazione partite reali
