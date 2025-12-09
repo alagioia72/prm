@@ -1,4 +1,4 @@
-import { Calendar, MapPin, Users, Trophy, Medal, Star, Users2, User, Edit } from "lucide-react";
+import { Calendar, MapPin, Users, Trophy, Medal, Star, Users2, User, Edit, ClipboardList } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -15,6 +15,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { it } from "date-fns/locale";
 import type { Tournament } from "./TournamentCard";
+import type { TournamentRegistrationWithPlayers, Player } from "@shared/schema";
 
 interface TournamentResult {
   id: number;
@@ -49,6 +50,7 @@ const genderLabels = {
 };
 
 const statusLabels = {
+  upcoming: 'Iscrizioni Aperte',
   open: 'Iscrizioni Aperte',
   in_progress: 'In Corso',
   completed: 'Concluso',
@@ -64,27 +66,9 @@ const formatLabels = {
   round_robin: 'Tutti vs Tutti',
 };
 
-const mockPlayersMap: Record<string, { firstName: string; lastName: string }> = {
-  "player-1": { firstName: "Marco", lastName: "Rossi" },
-  "player-2": { firstName: "Luca", lastName: "Bianchi" },
-  "player-3": { firstName: "Andrea", lastName: "Verdi" },
-  "player-4": { firstName: "Giuseppe", lastName: "Ferrari" },
-  "player-5": { firstName: "Paolo", lastName: "Romano" },
-  "player-6": { firstName: "Matteo", lastName: "Greco" },
-  "player-7": { firstName: "Simone", lastName: "Marino" },
-  "player-8": { firstName: "Roberto", lastName: "Neri" },
-  "player-9": { firstName: "Carlo", lastName: "Gialli" },
-  "player-10": { firstName: "Antonio", lastName: "Blu" },
-  "player-11": { firstName: "Stefano", lastName: "Rosa" },
-  "player-12": { firstName: "Fabio", lastName: "Viola" },
-};
-
-function getPlayerName(playerId: string): string {
-  const player = mockPlayersMap[playerId];
-  if (player) {
-    return `${player.firstName} ${player.lastName}`;
-  }
-  return playerId;
+function getPlayerDisplayName(player?: Player): string {
+  if (!player) return 'Giocatore sconosciuto';
+  return `${player.firstName} ${player.lastName}`;
 }
 
 export function TournamentDetailsDialog({
@@ -99,11 +83,27 @@ export function TournamentDetailsDialog({
     enabled: !!tournament && (tournament.status === 'in_progress' || tournament.status === 'completed'),
   });
 
+  const { data: registrations, isLoading: registrationsLoading } = useQuery<TournamentRegistrationWithPlayers[]>({
+    queryKey: [`/api/tournaments/${tournament?.id}/registrations?withPlayers=true`],
+    enabled: !!tournament,
+  });
+
+  const { data: allPlayers } = useQuery<Player[]>({
+    queryKey: ['/api/players'],
+    enabled: !!tournament && (tournament.status === 'in_progress' || tournament.status === 'completed'),
+  });
+
   if (!tournament) return null;
 
   const isCoupleTournament = tournament.registrationType === 'couple';
   const hasResults = results && results.length > 0;
   const sortedResults = hasResults ? [...results].sort((a, b) => a.position - b.position) : [];
+
+  const getPlayerName = (playerId: string | null): string => {
+    if (!playerId) return '-';
+    const player = allPlayers?.find(p => p.id === playerId);
+    return player ? `${player.firstName} ${player.lastName}` : playerId;
+  };
 
   const getPositionIcon = (position: number) => {
     switch (position) {
@@ -121,6 +121,7 @@ export function TournamentDetailsDialog({
   const getStatusVariant = (status: string) => {
     switch (status) {
       case 'open':
+      case 'upcoming':
         return 'default';
       case 'in_progress':
         return 'secondary';
@@ -128,6 +129,8 @@ export function TournamentDetailsDialog({
         return 'outline';
     }
   };
+
+  const registrationCount = registrations?.length ?? 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -138,88 +141,145 @@ export function TournamentDetailsDialog({
               {tournament.name}
             </DialogTitle>
             <Badge variant={getStatusVariant(tournament.status) as any}>
-              {statusLabels[tournament.status]}
+              {statusLabels[tournament.status as keyof typeof statusLabels] || tournament.status}
             </Badge>
           </div>
           <DialogDescription>
-            Dettagli del torneo e classifica finale
+            Dettagli del torneo, iscritti e classifica finale
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-sm">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span data-testid="text-details-date">
-                  {format(tournament.date, "EEEE d MMMM yyyy", { locale: it })}
-                </span>
+        <ScrollArea className="max-h-[70vh] pr-2">
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span data-testid="text-details-date">
+                    {format(tournament.date, "EEEE d MMMM yyyy", { locale: it })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <MapPin className="h-4 w-4 text-muted-foreground" />
+                  <span>{tournament.location}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <span>
+                    {registrationCount}/{tournament.maxParticipants} {isCoupleTournament ? 'coppie' : 'giocatori'}
+                  </span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <MapPin className="h-4 w-4 text-muted-foreground" />
-                <span>{tournament.location}</span>
-              </div>
-              <div className="flex items-center gap-2 text-sm">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                <span>
-                  {tournament.currentParticipants}/{tournament.maxParticipants} {isCoupleTournament ? 'coppie' : 'giocatori'}
-                </span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline">{levelLabels[tournament.level]}</Badge>
-                <Badge variant="outline">{genderLabels[tournament.gender]}</Badge>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="gap-1">
-                  {isCoupleTournament ? <Users2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
-                  {registrationTypeLabels[tournament.registrationType]}
+              <div className="space-y-2">
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline">{levelLabels[tournament.level]}</Badge>
+                  <Badge variant="outline">{genderLabels[tournament.gender]}</Badge>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="gap-1">
+                    {isCoupleTournament ? <Users2 className="h-3 w-3" /> : <User className="h-3 w-3" />}
+                    {registrationTypeLabels[tournament.registrationType]}
+                  </Badge>
+                  <Badge variant="outline">{formatLabels[tournament.format]}</Badge>
+                </div>
+                <Badge variant="secondary" className="gap-1">
+                  <Star className="h-3 w-3" />
+                  Moltiplicatore x{tournament.pointsMultiplier}
                 </Badge>
-                <Badge variant="outline">{formatLabels[tournament.format]}</Badge>
               </div>
-              <Badge variant="secondary" className="gap-1">
-                <Star className="h-3 w-3" />
-                Moltiplicatore x{tournament.pointsMultiplier}
-              </Badge>
             </div>
-          </div>
 
-          <Separator />
+            <Separator />
 
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
-                Classifica Finale
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                Iscritti ({registrationCount})
               </h3>
-              {isAdmin && (tournament.status === 'in_progress' || tournament.status === 'completed') && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1"
-                  onClick={() => {
-                    onOpenChange(false);
-                    onEditRanking?.(tournament);
-                  }}
-                  data-testid="button-edit-ranking-from-details"
-                >
-                  <Edit className="h-4 w-4" />
-                  {hasResults ? 'Modifica' : 'Assegna'}
-                </Button>
+
+              {registrationsLoading ? (
+                <div className="text-center py-4 text-muted-foreground">
+                  Caricamento iscritti...
+                </div>
+              ) : registrations && registrations.length > 0 ? (
+                <div className="space-y-2">
+                  {isCoupleTournament ? (
+                    registrations.map((reg, index) => (
+                      <Card key={reg.id} className="p-3" data-testid={`card-registration-${reg.id}`}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-muted-foreground min-w-[1.5rem]">
+                            {index + 1}.
+                          </span>
+                          <Users2 className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex-1">
+                            <span className="font-medium">
+                              {getPlayerDisplayName(reg.player)}
+                            </span>
+                            <span className="text-muted-foreground mx-2">&amp;</span>
+                            <span className="font-medium">
+                              {reg.partner ? getPlayerDisplayName(reg.partner) : 'Partner non assegnato'}
+                            </span>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  ) : (
+                    registrations.map((reg, index) => (
+                      <Card key={reg.id} className="p-3" data-testid={`card-registration-${reg.id}`}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm font-medium text-muted-foreground min-w-[1.5rem]">
+                            {index + 1}.
+                          </span>
+                          <User className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">
+                            {getPlayerDisplayName(reg.player)}
+                          </span>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-muted-foreground" data-testid="text-no-registrations">
+                  Nessun iscritto ancora
+                </div>
               )}
             </div>
 
-            {tournament.status === 'open' ? (
-              <div className="text-center py-8 text-muted-foreground">
-                La classifica sarà disponibile al termine del torneo
+            <Separator />
+
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  Classifica Finale
+                </h3>
+                {isAdmin && (tournament.status === 'in_progress' || tournament.status === 'completed') && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => {
+                      onOpenChange(false);
+                      onEditRanking?.(tournament);
+                    }}
+                    data-testid="button-edit-ranking-from-details"
+                  >
+                    <Edit className="h-4 w-4" />
+                    {hasResults ? 'Modifica' : 'Assegna'}
+                  </Button>
+                )}
               </div>
-            ) : resultsLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Caricamento classifica...
-              </div>
-            ) : hasResults ? (
-              <ScrollArea className="h-[300px] pr-4">
+
+              {(tournament.status as string) === 'open' || (tournament.status as string) === 'upcoming' ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  La classifica sarà disponibile al termine del torneo
+                </div>
+              ) : resultsLoading ? (
+                <div className="text-center py-8 text-muted-foreground">
+                  Caricamento classifica...
+                </div>
+              ) : hasResults ? (
                 <div className="space-y-2">
                   {sortedResults.map((result) => (
                     <Card key={result.id} className="p-3" data-testid={`card-result-position-${result.position}`}>
@@ -252,7 +312,7 @@ export function TournamentDetailsDialog({
                           </span>
                           {result.multiplier !== 1 && (
                             <span className="text-xs text-muted-foreground">
-                              ({result.basePoints} × {result.multiplier})
+                              ({result.basePoints} x {result.multiplier})
                             </span>
                           )}
                         </div>
@@ -260,16 +320,16 @@ export function TournamentDetailsDialog({
                     </Card>
                   ))}
                 </div>
-              </ScrollArea>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground" data-testid="text-no-results">
-                {tournament.status === 'in_progress' 
-                  ? 'Classifica non ancora assegnata. Il torneo è in corso.'
-                  : 'Classifica non disponibile'}
-              </div>
-            )}
+              ) : (
+                <div className="text-center py-8 text-muted-foreground" data-testid="text-no-results">
+                  {tournament.status === 'in_progress' 
+                    ? 'Classifica non ancora assegnata. Il torneo è in corso.'
+                    : 'Classifica non disponibile'}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
