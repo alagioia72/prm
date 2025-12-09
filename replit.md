@@ -101,6 +101,12 @@ Il prototipo include:
   - Locale: solo i giocatori di una specifica sede
 
 ## Recent Changes
+- 2024-12-09: Aggiunta tabella players con gender e level per gestione giocatori
+- 2024-12-09: Validazione eligibilità giocatori: genere e livello devono corrispondere al torneo
+- 2024-12-09: TournamentDetailsDialog mostra lista iscritti con nomi giocatori reali
+- 2024-12-09: TournamentRegistrationDialog usa API players reali e mostra errori eligibilità
+- 2024-12-09: API /api/players per gestione giocatori (GET all, GET by id)
+- 2024-12-09: API /api/tournaments/:id/registrations?withPlayers=true per dettagli iscritti
 - 2024-12-09: Implementato sistema iscrizione tornei completo (schema, storage, API, UI)
 - 2024-12-09: TournamentRegistrationDialog per iscrizione a tornei (coppia/individuale)
 - 2024-12-09: API endpoints per registrazioni CRUD (GET/POST/DELETE /api/tournaments/:id/register)
