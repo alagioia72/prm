@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Trophy, Calendar } from "lucide-react";
+import { Link } from "wouter";
 import heroImage from "@assets/stock_images/padel_tennis_court_a_87436f1f.jpg";
 
 interface HeroProps {
@@ -27,32 +28,32 @@ export function Hero({ isAuthenticated }: HeroProps) {
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           {isAuthenticated ? (
             <>
-              <a href="/tournaments">
+              <Link href="/tournaments">
                 <Button size="lg" className="w-full sm:w-auto gap-2" data-testid="button-hero-tournaments">
                   <Calendar className="h-5 w-5" />
                   Vedi Tornei
                 </Button>
-              </a>
-              <a href="/rankings">
+              </Link>
+              <Link href="/rankings">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2 bg-white/10 backdrop-blur border-white/20 text-white" data-testid="button-hero-rankings">
                   <Trophy className="h-5 w-5" />
                   Classifiche
                 </Button>
-              </a>
+              </Link>
             </>
           ) : (
             <>
-              <a href="/api/login">
+              <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto gap-2" data-testid="button-hero-register">
                   Registrati Ora
                 </Button>
-              </a>
-              <a href="/rankings">
+              </Link>
+              <Link href="/rankings">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto gap-2 bg-white/10 backdrop-blur border-white/20 text-white" data-testid="button-hero-view-rankings">
                   <Trophy className="h-5 w-5" />
                   Vedi Classifiche
                 </Button>
-              </a>
+              </Link>
             </>
           )}
         </div>
