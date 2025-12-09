@@ -101,6 +101,9 @@ Il prototipo include:
   - Locale: solo i giocatori di una specifica sede
 
 ## Recent Changes
+- 2024-12-09: Implementato sistema iscrizione tornei completo (schema, storage, API, UI)
+- 2024-12-09: TournamentRegistrationDialog per iscrizione a tornei (coppia/individuale)
+- 2024-12-09: API endpoints per registrazioni CRUD (GET/POST/DELETE /api/tournaments/:id/register)
 - 2024-12-08: Implementato sistema assegnazione classifica tornei da parte degli amministratori
 - 2024-12-08: TournamentDetailsDialog mostra classifica finale con nomi giocatori e punti
 - 2024-12-08: Admin può modificare classifica in qualsiasi momento dai dettagli torneo
