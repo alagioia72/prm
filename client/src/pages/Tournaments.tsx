@@ -7,7 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { CreateTournamentDialog } from "@/components/CreateTournamentDialog";
 import { TournamentDetailsDialog } from "@/components/TournamentDetailsDialog";
+import { TournamentRegistrationDialog } from "@/components/TournamentRegistrationDialog";
 import { Card } from "@/components/ui/card";
+import type { Tournament as BackendTournament } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -146,6 +148,10 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   const [detailsTournament, setDetailsTournament] = useState<Tournament | null>(null);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [positionsCount, setPositionsCount] = useState(8);
+  const [registrationDialogOpen, setRegistrationDialogOpen] = useState(false);
+  const [registrationTournament, setRegistrationTournament] = useState<BackendTournament | null>(null);
+  
+  const currentPlayerId = "player-1";
   
   const { toast } = useToast();
 
@@ -211,6 +217,30 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   const handleEditRankingFromDetails = (tournament: Tournament) => {
     setDetailsDialogOpen(false);
     handleAssignRanking(tournament);
+  };
+
+  const handleRegister = (tournamentId: number) => {
+    const tournament = mockTournaments.find(t => t.id === tournamentId);
+    if (tournament) {
+      const backendTournament: BackendTournament = {
+        id: tournament.id,
+        name: tournament.name,
+        clubId: 1,
+        startDate: tournament.date,
+        endDate: null,
+        registrationType: tournament.registrationType,
+        format: tournament.format,
+        gender: tournament.gender,
+        level: tournament.level,
+        maxParticipants: tournament.maxParticipants,
+        pointsMultiplier: tournament.pointsMultiplier,
+        scoringProfileId: null,
+        status: tournament.status === 'open' ? 'upcoming' : tournament.status === 'in_progress' ? 'in_progress' : 'completed',
+        createdAt: new Date(),
+      };
+      setRegistrationTournament(backendTournament);
+      setRegistrationDialogOpen(true);
+    }
   };
 
   const getPointsForPosition = (position: number): number => {
@@ -432,7 +462,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                   <TournamentCard
                     key={tournament.id}
                     tournament={tournament}
-                    onRegister={(id) => console.log('Register for:', id)}
+                    onRegister={handleRegister}
                     onViewDetails={handleViewDetails}
                     isAdmin={isAdmin}
                     onAssignRanking={handleAssignRanking}
@@ -640,6 +670,21 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
         isAdmin={isAdmin}
         onEditRanking={handleEditRankingFromDetails}
       />
+
+      {registrationTournament && (
+        <TournamentRegistrationDialog
+          tournament={registrationTournament}
+          currentPlayerId={currentPlayerId}
+          isOpen={registrationDialogOpen}
+          onOpenChange={setRegistrationDialogOpen}
+          onSuccess={() => {
+            toast({
+              title: "Iscrizione completata",
+              description: `Ti sei iscritto a ${registrationTournament.name}`,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
