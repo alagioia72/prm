@@ -260,5 +260,93 @@ export async function registerRoutes(
     }
   });
 
+  app.get("/api/tournaments/:id/registrations", async (req, res) => {
+    const tournamentId = parseInt(req.params.id);
+    const registrations = await storage.getTournamentRegistrations(tournamentId);
+    res.json(registrations);
+  });
+
+  app.post("/api/tournaments/:id/register", async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      const tournament = await storage.getTournament(tournamentId);
+      if (!tournament) {
+        return res.status(404).json({ error: "Tournament not found" });
+      }
+
+      if (tournament.status !== "upcoming") {
+        return res.status(400).json({ error: "Tournament is not open for registration" });
+      }
+
+      const registrationSchema = z.object({
+        playerId: z.string().min(1),
+        partnerId: z.string().optional(),
+      });
+      
+      const data = registrationSchema.parse(req.body);
+
+      const existing = await storage.getRegistration(tournamentId, data.playerId);
+      if (existing) {
+        return res.status(400).json({ error: "Already registered for this tournament" });
+      }
+
+      if (data.partnerId) {
+        const partnerExisting = await storage.getRegistration(tournamentId, data.partnerId);
+        if (partnerExisting) {
+          return res.status(400).json({ error: "Partner is already registered for this tournament" });
+        }
+      }
+
+      const currentRegistrations = await storage.getTournamentRegistrations(tournamentId);
+      if (currentRegistrations.length >= tournament.maxParticipants) {
+        return res.status(400).json({ error: "Tournament is full" });
+      }
+
+      const registration = await storage.createRegistration({
+        tournamentId,
+        playerId: data.playerId,
+        partnerId: data.partnerId,
+        status: "confirmed",
+      });
+
+      res.status(201).json(registration);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/tournaments/:id/register/:playerId", async (req, res) => {
+    try {
+      const tournamentId = parseInt(req.params.id);
+      const playerId = req.params.playerId;
+      
+      const tournament = await storage.getTournament(tournamentId);
+      if (!tournament) {
+        return res.status(404).json({ error: "Tournament not found" });
+      }
+
+      if (tournament.status !== "upcoming") {
+        return res.status(400).json({ error: "Cannot unregister from a tournament that has started" });
+      }
+
+      const success = await storage.deleteRegistration(tournamentId, playerId);
+      if (!success) {
+        return res.status(404).json({ error: "Registration not found" });
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/players/:playerId/registrations", async (req, res) => {
+    const registrations = await storage.getPlayerRegistrations(req.params.playerId);
+    res.json(registrations);
+  });
+
   return httpServer;
 }

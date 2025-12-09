@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament } from "@shared/schema";
+import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -34,6 +34,12 @@ export interface IStorage {
   getTournamentResults(tournamentId: number): Promise<TournamentResult[]>;
   saveTournamentResults(tournamentId: number, results: InsertTournamentResult[]): Promise<TournamentResult[]>;
   deleteTournamentResults(tournamentId: number): Promise<void>;
+  
+  getTournamentRegistrations(tournamentId: number): Promise<TournamentRegistration[]>;
+  getPlayerRegistrations(playerId: string): Promise<TournamentRegistration[]>;
+  getRegistration(tournamentId: number, playerId: string): Promise<TournamentRegistration | undefined>;
+  createRegistration(registration: InsertTournamentRegistration): Promise<TournamentRegistration>;
+  deleteRegistration(tournamentId: number, playerId: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -44,12 +50,14 @@ export class MemStorage implements IStorage {
   private matches: Map<number, Match>;
   private tournaments: Map<number, Tournament>;
   private tournamentResults: Map<number, TournamentResult[]>;
+  private tournamentRegistrations: Map<string, TournamentRegistration>;
   private nextClubId = 1;
   private nextProfileId = 1;
   private nextEntryId = 1;
   private nextMatchId = 1;
   private nextTournamentId = 1;
   private nextTournamentResultId = 1;
+  private nextRegistrationId = 1;
 
   constructor() {
     this.users = new Map();
@@ -59,6 +67,7 @@ export class MemStorage implements IStorage {
     this.matches = new Map();
     this.tournaments = new Map();
     this.tournamentResults = new Map();
+    this.tournamentRegistrations = new Map();
     this.initializeDefaultData();
   }
 
@@ -414,6 +423,44 @@ export class MemStorage implements IStorage {
 
   async deleteTournamentResults(tournamentId: number): Promise<void> {
     this.tournamentResults.delete(tournamentId);
+  }
+
+  async getTournamentRegistrations(tournamentId: number): Promise<TournamentRegistration[]> {
+    return Array.from(this.tournamentRegistrations.values())
+      .filter(r => r.tournamentId === tournamentId)
+      .sort((a, b) => new Date(a.registeredAt!).getTime() - new Date(b.registeredAt!).getTime());
+  }
+
+  async getPlayerRegistrations(playerId: string): Promise<TournamentRegistration[]> {
+    return Array.from(this.tournamentRegistrations.values())
+      .filter(r => r.playerId === playerId || r.partnerId === playerId);
+  }
+
+  async getRegistration(tournamentId: number, playerId: string): Promise<TournamentRegistration | undefined> {
+    return Array.from(this.tournamentRegistrations.values())
+      .find(r => r.tournamentId === tournamentId && (r.playerId === playerId || r.partnerId === playerId));
+  }
+
+  async createRegistration(insert: InsertTournamentRegistration): Promise<TournamentRegistration> {
+    const id = this.nextRegistrationId++;
+    const key = `${insert.tournamentId}-${insert.playerId}`;
+    const registration: TournamentRegistration = {
+      id,
+      tournamentId: insert.tournamentId,
+      playerId: insert.playerId,
+      partnerId: insert.partnerId ?? null,
+      status: insert.status ?? "confirmed",
+      registeredAt: new Date(),
+    };
+    this.tournamentRegistrations.set(key, registration);
+    return registration;
+  }
+
+  async deleteRegistration(tournamentId: number, playerId: string): Promise<boolean> {
+    const registration = await this.getRegistration(tournamentId, playerId);
+    if (!registration) return false;
+    const key = `${tournamentId}-${registration.playerId}`;
+    return this.tournamentRegistrations.delete(key);
   }
 }
 

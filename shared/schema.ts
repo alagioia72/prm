@@ -165,3 +165,20 @@ export interface TournamentRanking {
   multiplier: number;
   finalPoints: number;
 }
+
+export const tournamentRegistrations = pgTable("tournament_registrations", {
+  id: serial("id").primaryKey(),
+  tournamentId: integer("tournament_id").notNull(),
+  playerId: text("player_id").notNull(),
+  partnerId: text("partner_id"),
+  status: text("status").notNull().default("confirmed"),
+  registeredAt: timestamp("registered_at").defaultNow(),
+});
+
+export const insertTournamentRegistrationSchema = createInsertSchema(tournamentRegistrations).omit({
+  id: true,
+  registeredAt: true,
+});
+
+export type InsertTournamentRegistration = z.infer<typeof insertTournamentRegistrationSchema>;
+export type TournamentRegistration = typeof tournamentRegistrations.$inferSelect;
