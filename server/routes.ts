@@ -1,8 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertClubSchema, insertScoringProfileSchema, insertMatchSchema, insertTournamentSchema, insertTournamentResultSchema } from "@shared/schema";
+import { insertClubSchema, insertScoringProfileSchema, insertMatchSchema, insertTournamentSchema, insertTournamentResultSchema, registerPlayerSchema, loginSchema } from "@shared/schema";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
+import { randomUUID } from "crypto";
+import { sendVerificationEmail, sendTournamentNotification } from "./email";
 
 export async function registerRoutes(
   httpServer: Server,
@@ -178,6 +181,31 @@ export async function registerRoutes(
     try {
       const data = insertTournamentSchema.parse(req.body);
       const tournament = await storage.createTournament(data);
+      
+      const eligiblePlayers = await storage.getEligiblePlayersForTournament(
+        tournament.gender,
+        tournament.level
+      );
+      
+      const emailPromises = eligiblePlayers.map(player => 
+        sendTournamentNotification(
+          player.email,
+          player.firstName,
+          tournament.name,
+          tournament.startDate,
+          tournament.gender,
+          tournament.level
+        ).catch(err => {
+          console.error(`Failed to send email to ${player.email}:`, err);
+          return false;
+        })
+      );
+      
+      Promise.all(emailPromises).then(results => {
+        const sentCount = results.filter(Boolean).length;
+        console.log(`Tournament ${tournament.name}: Sent ${sentCount}/${eligiblePlayers.length} notification emails`);
+      });
+      
       res.status(201).json(tournament);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -398,7 +426,141 @@ export async function registerRoutes(
     if (!player) {
       return res.status(404).json({ error: "Player not found" });
     }
-    res.json(player);
+    const { password, verificationToken, ...safePlayer } = player;
+    res.json(safePlayer);
+  });
+
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      const data = registerPlayerSchema.parse(req.body);
+      
+      const existingPlayer = await storage.getPlayerByEmail(data.email);
+      if (existingPlayer) {
+        return res.status(400).json({ error: "Email già registrata" });
+      }
+
+      const hashedPassword = await bcrypt.hash(data.password, 10);
+      const verificationToken = randomUUID();
+      const playerId = `player-${randomUUID().slice(0, 8)}`;
+
+      const player = await storage.createPlayer({
+        id: playerId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: data.email,
+        password: hashedPassword,
+        gender: data.gender,
+        level: data.level,
+        clubId: data.clubId ?? null,
+        totalPoints: 0,
+      });
+
+      await storage.updatePlayer(player.id, { verificationToken } as any);
+
+      const emailSent = await sendVerificationEmail(data.email, data.firstName, verificationToken);
+      
+      const { password: _, verificationToken: __, ...safePlayer } = player;
+      res.status(201).json({ 
+        ...safePlayer, 
+        emailSent,
+        message: emailSent 
+          ? "Registrazione completata! Controlla la tua email per verificare l'account." 
+          : "Registrazione completata! Email di verifica non inviata - contatta l'amministratore."
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      console.error("Registration error:", error);
+      res.status(500).json({ error: "Errore durante la registrazione" });
+    }
+  });
+
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const data = loginSchema.parse(req.body);
+      
+      const player = await storage.getPlayerByEmail(data.email);
+      if (!player) {
+        return res.status(401).json({ error: "Credenziali non valide" });
+      }
+
+      const validPassword = await bcrypt.compare(data.password, player.password);
+      if (!validPassword) {
+        return res.status(401).json({ error: "Credenziali non valide" });
+      }
+
+      if (!player.emailVerified) {
+        return res.status(403).json({ error: "Email non verificata. Controlla la tua casella di posta." });
+      }
+
+      const { password: _, verificationToken: __, ...safePlayer } = player;
+      res.json({ 
+        ...safePlayer,
+        message: "Login effettuato con successo"
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Errore durante il login" });
+    }
+  });
+
+  app.get("/api/auth/verify-email", async (req, res) => {
+    try {
+      const token = req.query.token as string;
+      if (!token) {
+        return res.status(400).json({ error: "Token mancante" });
+      }
+
+      const player = await storage.getPlayerByVerificationToken(token);
+      if (!player) {
+        return res.status(400).json({ error: "Token non valido o scaduto" });
+      }
+
+      await storage.updatePlayer(player.id, { 
+        emailVerified: true, 
+        verificationToken: null 
+      } as any);
+
+      res.json({ message: "Email verificata con successo! Ora puoi accedere." });
+    } catch (error) {
+      res.status(500).json({ error: "Errore durante la verifica" });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      const emailSchema = z.object({ email: z.string().email() });
+      const { email } = emailSchema.parse(req.body);
+
+      const player = await storage.getPlayerByEmail(email);
+      if (!player) {
+        return res.status(404).json({ error: "Email non trovata" });
+      }
+
+      if (player.emailVerified) {
+        return res.status(400).json({ error: "Email già verificata" });
+      }
+
+      const newToken = randomUUID();
+      await storage.updatePlayer(player.id, { verificationToken: newToken } as any);
+
+      const emailSent = await sendVerificationEmail(email, player.firstName, newToken);
+      
+      res.json({ 
+        success: emailSent,
+        message: emailSent 
+          ? "Email di verifica inviata!" 
+          : "Impossibile inviare l'email - riprova più tardi."
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Errore durante l'invio" });
+    }
   });
 
   return httpServer;
