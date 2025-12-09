@@ -262,8 +262,14 @@ export async function registerRoutes(
 
   app.get("/api/tournaments/:id/registrations", async (req, res) => {
     const tournamentId = parseInt(req.params.id);
-    const registrations = await storage.getTournamentRegistrations(tournamentId);
-    res.json(registrations);
+    const withPlayers = req.query.withPlayers === 'true';
+    if (withPlayers) {
+      const registrations = await storage.getTournamentRegistrationsWithPlayers(tournamentId);
+      res.json(registrations);
+    } else {
+      const registrations = await storage.getTournamentRegistrations(tournamentId);
+      res.json(registrations);
+    }
   });
 
   app.post("/api/tournaments/:id/register", async (req, res) => {
@@ -275,7 +281,7 @@ export async function registerRoutes(
       }
 
       if (tournament.status !== "upcoming") {
-        return res.status(400).json({ error: "Tournament is not open for registration" });
+        return res.status(400).json({ error: "Il torneo non è aperto alle iscrizioni" });
       }
 
       const registrationSchema = z.object({
@@ -285,21 +291,55 @@ export async function registerRoutes(
       
       const data = registrationSchema.parse(req.body);
 
+      const player = await storage.getPlayer(data.playerId);
+      if (!player) {
+        return res.status(404).json({ error: "Giocatore non trovato" });
+      }
+
+      if (tournament.gender !== "mixed" && player.gender !== tournament.gender) {
+        const genderLabel = tournament.gender === "male" ? "maschile" : "femminile";
+        return res.status(400).json({ error: `Questo torneo è riservato a giocatori di categoria ${genderLabel}` });
+      }
+
+      if (player.level !== tournament.level) {
+        const levelLabel = tournament.level === "beginner" ? "principianti" : 
+                          tournament.level === "intermediate" ? "intermedi" : "avanzati";
+        return res.status(400).json({ error: `Questo torneo è riservato a giocatori di livello ${levelLabel}` });
+      }
+
+      if (data.partnerId) {
+        const partner = await storage.getPlayer(data.partnerId);
+        if (!partner) {
+          return res.status(404).json({ error: "Partner non trovato" });
+        }
+
+        if (tournament.gender !== "mixed" && partner.gender !== tournament.gender) {
+          const genderLabel = tournament.gender === "male" ? "maschile" : "femminile";
+          return res.status(400).json({ error: `Il partner deve essere di categoria ${genderLabel}` });
+        }
+
+        if (partner.level !== tournament.level) {
+          const levelLabel = tournament.level === "beginner" ? "principianti" : 
+                            tournament.level === "intermediate" ? "intermedi" : "avanzati";
+          return res.status(400).json({ error: `Il partner deve essere di livello ${levelLabel}` });
+        }
+      }
+
       const existing = await storage.getRegistration(tournamentId, data.playerId);
       if (existing) {
-        return res.status(400).json({ error: "Already registered for this tournament" });
+        return res.status(400).json({ error: "Sei già iscritto a questo torneo" });
       }
 
       if (data.partnerId) {
         const partnerExisting = await storage.getRegistration(tournamentId, data.partnerId);
         if (partnerExisting) {
-          return res.status(400).json({ error: "Partner is already registered for this tournament" });
+          return res.status(400).json({ error: "Il partner è già iscritto a questo torneo" });
         }
       }
 
       const currentRegistrations = await storage.getTournamentRegistrations(tournamentId);
       if (currentRegistrations.length >= tournament.maxParticipants) {
-        return res.status(400).json({ error: "Tournament is full" });
+        return res.status(400).json({ error: "Il torneo è al completo" });
       }
 
       const registration = await storage.createRegistration({
@@ -346,6 +386,19 @@ export async function registerRoutes(
   app.get("/api/players/:playerId/registrations", async (req, res) => {
     const registrations = await storage.getPlayerRegistrations(req.params.playerId);
     res.json(registrations);
+  });
+
+  app.get("/api/players", async (req, res) => {
+    const players = await storage.getPlayers();
+    res.json(players);
+  });
+
+  app.get("/api/players/:id", async (req, res) => {
+    const player = await storage.getPlayer(req.params.id);
+    if (!player) {
+      return res.status(404).json({ error: "Player not found" });
+    }
+    res.json(player);
   });
 
   return httpServer;
