@@ -187,17 +187,40 @@ export const players = pgTable("players", {
   id: text("id").primaryKey(),
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
-  email: text("email"),
+  email: text("email").notNull().unique(),
+  password: text("password").notNull(),
   gender: text("gender").notNull().default("male"),
   level: text("level").notNull().default("intermediate"),
   clubId: integer("club_id"),
   totalPoints: integer("total_points").notNull().default(0),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  verificationToken: text("verification_token"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
 export const insertPlayerSchema = createInsertSchema(players).omit({
   createdAt: true,
+  emailVerified: true,
+  verificationToken: true,
 });
+
+export const registerPlayerSchema = z.object({
+  firstName: z.string().min(2, "Il nome deve avere almeno 2 caratteri"),
+  lastName: z.string().min(2, "Il cognome deve avere almeno 2 caratteri"),
+  email: z.string().email("Email non valida"),
+  password: z.string().min(8, "La password deve avere almeno 8 caratteri"),
+  gender: z.enum(["male", "female", "other"]),
+  level: z.enum(["beginner", "intermediate", "advanced"]),
+  clubId: z.number().optional(),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email("Email non valida"),
+  password: z.string().min(1, "Password richiesta"),
+});
+
+export type RegisterPlayer = z.infer<typeof registerPlayerSchema>;
+export type LoginCredentials = z.infer<typeof loginSchema>;
 
 export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
 export type Player = typeof players.$inferSelect;

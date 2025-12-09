@@ -44,8 +44,11 @@ export interface IStorage {
   
   getPlayers(): Promise<Player[]>;
   getPlayer(id: string): Promise<Player | undefined>;
+  getPlayerByEmail(email: string): Promise<Player | undefined>;
+  getPlayerByVerificationToken(token: string): Promise<Player | undefined>;
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayer(id: string, updates: Partial<InsertPlayer>): Promise<Player | undefined>;
+  getEligiblePlayersForTournament(gender: string, level: string): Promise<Player[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -200,19 +203,22 @@ export class MemStorage implements IStorage {
     ];
     defaultTournaments.forEach(tournament => this.tournaments.set(tournament.id, tournament));
 
+    // Seed players with bcrypt hashed password (password is "password123" for all)
+    // Hash generated with bcrypt.hashSync("password123", 10)
+    const seedPasswordHash = "$2a$10$K7L1OJ45/4Y2nIvhRVpCe.FSmhDdWoXehVzJptJ/op0lLFN.2jROG";
     const defaultPlayers: Player[] = [
-      { id: "player-1", firstName: "Marco", lastName: "Rossi", email: "marco@test.com", gender: "male", level: "intermediate", clubId: 1, totalPoints: 150, createdAt: new Date() },
-      { id: "player-2", firstName: "Luca", lastName: "Bianchi", email: "luca@test.com", gender: "male", level: "intermediate", clubId: 1, totalPoints: 120, createdAt: new Date() },
-      { id: "player-3", firstName: "Andrea", lastName: "Verdi", email: "andrea@test.com", gender: "male", level: "advanced", clubId: 1, totalPoints: 200, createdAt: new Date() },
-      { id: "player-4", firstName: "Giuseppe", lastName: "Ferrari", email: "giuseppe@test.com", gender: "male", level: "beginner", clubId: 2, totalPoints: 80, createdAt: new Date() },
-      { id: "player-5", firstName: "Paolo", lastName: "Romano", email: "paolo@test.com", gender: "male", level: "intermediate", clubId: 2, totalPoints: 130, createdAt: new Date() },
-      { id: "player-6", firstName: "Matteo", lastName: "Greco", email: "matteo@test.com", gender: "male", level: "advanced", clubId: 2, totalPoints: 180, createdAt: new Date() },
-      { id: "player-7", firstName: "Giulia", lastName: "Marino", email: "giulia@test.com", gender: "female", level: "intermediate", clubId: 1, totalPoints: 140, createdAt: new Date() },
-      { id: "player-8", firstName: "Francesca", lastName: "Neri", email: "francesca@test.com", gender: "female", level: "beginner", clubId: 1, totalPoints: 60, createdAt: new Date() },
-      { id: "player-9", firstName: "Sara", lastName: "Gialli", email: "sara@test.com", gender: "female", level: "advanced", clubId: 3, totalPoints: 210, createdAt: new Date() },
-      { id: "player-10", firstName: "Chiara", lastName: "Blu", email: "chiara@test.com", gender: "female", level: "intermediate", clubId: 3, totalPoints: 125, createdAt: new Date() },
-      { id: "player-11", firstName: "Elena", lastName: "Rosa", email: "elena@test.com", gender: "female", level: "beginner", clubId: 2, totalPoints: 45, createdAt: new Date() },
-      { id: "player-12", firstName: "Valentina", lastName: "Viola", email: "valentina@test.com", gender: "female", level: "intermediate", clubId: 3, totalPoints: 110, createdAt: new Date() },
+      { id: "player-1", firstName: "Marco", lastName: "Rossi", email: "marco@test.com", password: seedPasswordHash, gender: "male", level: "intermediate", clubId: 1, totalPoints: 150, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-2", firstName: "Luca", lastName: "Bianchi", email: "luca@test.com", password: seedPasswordHash, gender: "male", level: "intermediate", clubId: 1, totalPoints: 120, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-3", firstName: "Andrea", lastName: "Verdi", email: "andrea@test.com", password: seedPasswordHash, gender: "male", level: "advanced", clubId: 1, totalPoints: 200, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-4", firstName: "Giuseppe", lastName: "Ferrari", email: "giuseppe@test.com", password: seedPasswordHash, gender: "male", level: "beginner", clubId: 2, totalPoints: 80, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-5", firstName: "Paolo", lastName: "Romano", email: "paolo@test.com", password: seedPasswordHash, gender: "male", level: "intermediate", clubId: 2, totalPoints: 130, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-6", firstName: "Matteo", lastName: "Greco", email: "matteo@test.com", password: seedPasswordHash, gender: "male", level: "advanced", clubId: 2, totalPoints: 180, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-7", firstName: "Giulia", lastName: "Marino", email: "giulia@test.com", password: seedPasswordHash, gender: "female", level: "intermediate", clubId: 1, totalPoints: 140, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-8", firstName: "Francesca", lastName: "Neri", email: "francesca@test.com", password: seedPasswordHash, gender: "female", level: "beginner", clubId: 1, totalPoints: 60, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-9", firstName: "Sara", lastName: "Gialli", email: "sara@test.com", password: seedPasswordHash, gender: "female", level: "advanced", clubId: 3, totalPoints: 210, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-10", firstName: "Chiara", lastName: "Blu", email: "chiara@test.com", password: seedPasswordHash, gender: "female", level: "intermediate", clubId: 3, totalPoints: 125, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-11", firstName: "Elena", lastName: "Rosa", email: "elena@test.com", password: seedPasswordHash, gender: "female", level: "beginner", clubId: 2, totalPoints: 45, emailVerified: true, verificationToken: null, createdAt: new Date() },
+      { id: "player-12", firstName: "Valentina", lastName: "Viola", email: "valentina@test.com", password: seedPasswordHash, gender: "female", level: "intermediate", clubId: 3, totalPoints: 110, emailVerified: true, verificationToken: null, createdAt: new Date() },
     ];
     defaultPlayers.forEach(player => this.players.set(player.id, player));
   }
@@ -513,11 +519,14 @@ export class MemStorage implements IStorage {
       id: insert.id,
       firstName: insert.firstName,
       lastName: insert.lastName,
-      email: insert.email ?? null,
+      email: insert.email,
+      password: insert.password,
       gender: insert.gender ?? "male",
       level: insert.level ?? "intermediate",
       clubId: insert.clubId ?? null,
       totalPoints: insert.totalPoints ?? 0,
+      emailVerified: false,
+      verificationToken: null,
       createdAt: new Date(),
     };
     this.players.set(player.id, player);
@@ -530,6 +539,22 @@ export class MemStorage implements IStorage {
     const updated: Player = { ...player, ...updates };
     this.players.set(id, updated);
     return updated;
+  }
+
+  async getPlayerByEmail(email: string): Promise<Player | undefined> {
+    return Array.from(this.players.values()).find(p => p.email === email);
+  }
+
+  async getPlayerByVerificationToken(token: string): Promise<Player | undefined> {
+    return Array.from(this.players.values()).find(p => p.verificationToken === token);
+  }
+
+  async getEligiblePlayersForTournament(gender: string, level: string): Promise<Player[]> {
+    return Array.from(this.players.values()).filter(p => {
+      const genderMatch = gender === "mixed" || p.gender === gender;
+      const levelMatch = p.level === level;
+      return genderMatch && levelMatch && p.emailVerified;
+    });
   }
 }
 
