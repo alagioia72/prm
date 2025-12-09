@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, Trophy, Users, Calendar, User, Shield } from "lucide-react";
+import { Menu, X, Trophy, Users, Calendar, User, Shield, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -12,6 +12,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/hooks/useAuth.tsx";
 
 interface NavbarProps {
   user?: {
@@ -31,7 +32,8 @@ const navItems = [
 
 export function Navbar({ user, isAuthenticated }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [location] = useLocation();
+  const [location, navigate] = useLocation();
+  const { logout } = useAuth();
 
   const getInitials = () => {
     if (user?.firstName && user?.lastName) {
@@ -109,17 +111,20 @@ export function Navbar({ user, isAuthenticated }: NavbarProps) {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a href="/api/logout" className="flex items-center gap-2 cursor-pointer text-destructive" data-testid="button-logout">
-                      Esci
-                    </a>
+                  <DropdownMenuItem 
+                    onClick={() => { logout(); navigate("/"); }}
+                    className="flex items-center gap-2 cursor-pointer text-destructive" 
+                    data-testid="button-logout"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Esci
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <a href="/api/login">
+              <Link href="/login">
                 <Button data-testid="button-login">Accedi</Button>
-              </a>
+              </Link>
             )}
 
             <Button

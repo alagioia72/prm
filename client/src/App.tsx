@@ -1,10 +1,10 @@
-import { useState } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useTheme } from "@/hooks/useTheme";
+import { AuthProvider, useAuth } from "@/hooks/useAuth.tsx";
 
 import { Navbar } from "@/components/Navbar";
 import Landing from "@/pages/Landing";
@@ -15,33 +15,13 @@ import Players from "@/pages/Players";
 import Profile from "@/pages/Profile";
 import AdminDashboard from "@/pages/AdminDashboard";
 import MyMatches from "@/pages/MyMatches";
+import Register from "@/pages/Register";
+import Login from "@/pages/Login";
+import VerifyEmail from "@/pages/VerifyEmail";
 import NotFound from "@/pages/not-found";
 
-// todo: remove mock functionality - this simulates authentication state
-const useMockAuth = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const mockUser = {
-    id: "1",
-    firstName: "Marco",
-    lastName: "Rossi",
-    email: "marco.rossi@email.com",
-    profileImageUrl: null,
-    role: 'admin' as const,
-    gender: 'male' as const,
-    level: 'intermediate' as const,
-  };
-  
-  return {
-    user: isAuthenticated ? mockUser : null,
-    isAuthenticated,
-    isLoading,
-  };
-};
-
 function Router() {
-  const { user, isAuthenticated, isLoading } = useMockAuth();
+  const { user, isAuthenticated, isLoading, login } = useAuth();
 
   if (isLoading) {
     return (
@@ -51,16 +31,30 @@ function Router() {
     );
   }
 
+  const navUser = user ? {
+    ...user,
+    profileImageUrl: null,
+  } : null;
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar user={user} isAuthenticated={isAuthenticated} />
+      <Navbar user={navUser} isAuthenticated={isAuthenticated} />
       <Switch>
         <Route path="/">
           {isAuthenticated && user ? (
-            <Home user={user} />
+            <Home user={{ ...user, profileImageUrl: null }} />
           ) : (
             <Landing isAuthenticated={false} />
           )}
+        </Route>
+        <Route path="/register">
+          <Register />
+        </Route>
+        <Route path="/login">
+          <Login onLogin={login} />
+        </Route>
+        <Route path="/verify-email">
+          <VerifyEmail />
         </Route>
         <Route path="/tournaments">
           <Tournaments isAdmin={user?.role === 'admin'} />
@@ -73,7 +67,7 @@ function Router() {
         </Route>
         <Route path="/profile">
           {isAuthenticated && user ? (
-            <Profile user={user} />
+            <Profile user={{ ...user, profileImageUrl: null }} />
           ) : (
             <Landing isAuthenticated={false} />
           )}
@@ -104,8 +98,10 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <AuthProvider>
+          <Toaster />
+          <Router />
+        </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

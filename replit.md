@@ -100,7 +100,27 @@ Il prototipo include:
   - Globale: tutti i giocatori di tutte le sedi
   - Locale: solo i giocatori di una specifica sede
 
+## User Authentication
+- **Registrazione**: POST /api/auth/register con validazione email, password hashata con bcrypt
+- **Login**: POST /api/auth/login con verifica password e controllo email verificata
+- **Verifica Email**: GET /api/auth/verify-email?token=xxx conferma email utente
+- **Reinvio Verifica**: POST /api/auth/resend-verification per rinviare email di verifica
+- **Password**: Cifrata con bcrypt (10 rounds), mai esposta nelle API
+- **Session**: Salvata in localStorage (frontend), include role per determinare privilegi admin
+
+## Email Notifications (Resend)
+- Email di verifica inviate alla registrazione
+- Notifiche automatiche ai giocatori idonei quando viene creato un nuovo torneo
+- Template HTML responsive con branding Padel Club
+
 ## Recent Changes
+- 2024-12-09: Implementato sistema registrazione utenti con password cifrata bcrypt
+- 2024-12-09: Aggiunta verifica email con token e reinvio verifica
+- 2024-12-09: Integrato Resend per invio email transazionali
+- 2024-12-09: Notifiche email automatiche ai giocatori idonei alla creazione torneo
+- 2024-12-09: Pagine Register, Login, VerifyEmail nel frontend
+- 2024-12-09: AuthProvider context per gestione stato autenticazione
+- 2024-12-09: Navbar aggiornata con login/logout funzionanti
 - 2024-12-09: Aggiunta tabella players con gender e level per gestione giocatori
 - 2024-12-09: Validazione eligibilità giocatori: genere e livello devono corrispondere al torneo
 - 2024-12-09: TournamentDetailsDialog mostra lista iscritti con nomi giocatori reali
