@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration } from "@shared/schema";
+import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration, type Player, type InsertPlayer, type TournamentRegistrationWithPlayers } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -36,10 +36,16 @@ export interface IStorage {
   deleteTournamentResults(tournamentId: number): Promise<void>;
   
   getTournamentRegistrations(tournamentId: number): Promise<TournamentRegistration[]>;
+  getTournamentRegistrationsWithPlayers(tournamentId: number): Promise<TournamentRegistrationWithPlayers[]>;
   getPlayerRegistrations(playerId: string): Promise<TournamentRegistration[]>;
   getRegistration(tournamentId: number, playerId: string): Promise<TournamentRegistration | undefined>;
   createRegistration(registration: InsertTournamentRegistration): Promise<TournamentRegistration>;
   deleteRegistration(tournamentId: number, playerId: string): Promise<boolean>;
+  
+  getPlayers(): Promise<Player[]>;
+  getPlayer(id: string): Promise<Player | undefined>;
+  createPlayer(player: InsertPlayer): Promise<Player>;
+  updatePlayer(id: string, updates: Partial<InsertPlayer>): Promise<Player | undefined>;
 }
 
 export class MemStorage implements IStorage {
@@ -51,6 +57,7 @@ export class MemStorage implements IStorage {
   private tournaments: Map<number, Tournament>;
   private tournamentResults: Map<number, TournamentResult[]>;
   private tournamentRegistrations: Map<string, TournamentRegistration>;
+  private players: Map<string, Player>;
   private nextClubId = 1;
   private nextProfileId = 1;
   private nextEntryId = 1;
@@ -68,6 +75,7 @@ export class MemStorage implements IStorage {
     this.tournaments = new Map();
     this.tournamentResults = new Map();
     this.tournamentRegistrations = new Map();
+    this.players = new Map();
     this.initializeDefaultData();
   }
 
@@ -191,6 +199,22 @@ export class MemStorage implements IStorage {
       },
     ];
     defaultTournaments.forEach(tournament => this.tournaments.set(tournament.id, tournament));
+
+    const defaultPlayers: Player[] = [
+      { id: "player-1", firstName: "Marco", lastName: "Rossi", email: "marco@test.com", gender: "male", level: "intermediate", clubId: 1, totalPoints: 150, createdAt: new Date() },
+      { id: "player-2", firstName: "Luca", lastName: "Bianchi", email: "luca@test.com", gender: "male", level: "intermediate", clubId: 1, totalPoints: 120, createdAt: new Date() },
+      { id: "player-3", firstName: "Andrea", lastName: "Verdi", email: "andrea@test.com", gender: "male", level: "advanced", clubId: 1, totalPoints: 200, createdAt: new Date() },
+      { id: "player-4", firstName: "Giuseppe", lastName: "Ferrari", email: "giuseppe@test.com", gender: "male", level: "beginner", clubId: 2, totalPoints: 80, createdAt: new Date() },
+      { id: "player-5", firstName: "Paolo", lastName: "Romano", email: "paolo@test.com", gender: "male", level: "intermediate", clubId: 2, totalPoints: 130, createdAt: new Date() },
+      { id: "player-6", firstName: "Matteo", lastName: "Greco", email: "matteo@test.com", gender: "male", level: "advanced", clubId: 2, totalPoints: 180, createdAt: new Date() },
+      { id: "player-7", firstName: "Giulia", lastName: "Marino", email: "giulia@test.com", gender: "female", level: "intermediate", clubId: 1, totalPoints: 140, createdAt: new Date() },
+      { id: "player-8", firstName: "Francesca", lastName: "Neri", email: "francesca@test.com", gender: "female", level: "beginner", clubId: 1, totalPoints: 60, createdAt: new Date() },
+      { id: "player-9", firstName: "Sara", lastName: "Gialli", email: "sara@test.com", gender: "female", level: "advanced", clubId: 3, totalPoints: 210, createdAt: new Date() },
+      { id: "player-10", firstName: "Chiara", lastName: "Blu", email: "chiara@test.com", gender: "female", level: "intermediate", clubId: 3, totalPoints: 125, createdAt: new Date() },
+      { id: "player-11", firstName: "Elena", lastName: "Rosa", email: "elena@test.com", gender: "female", level: "beginner", clubId: 2, totalPoints: 45, createdAt: new Date() },
+      { id: "player-12", firstName: "Valentina", lastName: "Viola", email: "valentina@test.com", gender: "female", level: "intermediate", clubId: 3, totalPoints: 110, createdAt: new Date() },
+    ];
+    defaultPlayers.forEach(player => this.players.set(player.id, player));
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -461,6 +485,51 @@ export class MemStorage implements IStorage {
     if (!registration) return false;
     const key = `${tournamentId}-${registration.playerId}`;
     return this.tournamentRegistrations.delete(key);
+  }
+
+  async getTournamentRegistrationsWithPlayers(tournamentId: number): Promise<TournamentRegistrationWithPlayers[]> {
+    const registrations = await this.getTournamentRegistrations(tournamentId);
+    return Promise.all(registrations.map(async (reg) => {
+      const player = await this.getPlayer(reg.playerId);
+      const partner = reg.partnerId ? await this.getPlayer(reg.partnerId) : undefined;
+      return {
+        ...reg,
+        player,
+        partner,
+      };
+    }));
+  }
+
+  async getPlayers(): Promise<Player[]> {
+    return Array.from(this.players.values());
+  }
+
+  async getPlayer(id: string): Promise<Player | undefined> {
+    return this.players.get(id);
+  }
+
+  async createPlayer(insert: InsertPlayer): Promise<Player> {
+    const player: Player = {
+      id: insert.id,
+      firstName: insert.firstName,
+      lastName: insert.lastName,
+      email: insert.email ?? null,
+      gender: insert.gender ?? "male",
+      level: insert.level ?? "intermediate",
+      clubId: insert.clubId ?? null,
+      totalPoints: insert.totalPoints ?? 0,
+      createdAt: new Date(),
+    };
+    this.players.set(player.id, player);
+    return player;
+  }
+
+  async updatePlayer(id: string, updates: Partial<InsertPlayer>): Promise<Player | undefined> {
+    const player = this.players.get(id);
+    if (!player) return undefined;
+    const updated: Player = { ...player, ...updates };
+    this.players.set(id, updated);
+    return updated;
   }
 }
 

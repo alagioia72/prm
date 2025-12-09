@@ -182,3 +182,27 @@ export const insertTournamentRegistrationSchema = createInsertSchema(tournamentR
 
 export type InsertTournamentRegistration = z.infer<typeof insertTournamentRegistrationSchema>;
 export type TournamentRegistration = typeof tournamentRegistrations.$inferSelect;
+
+export const players = pgTable("players", {
+  id: text("id").primaryKey(),
+  firstName: text("first_name").notNull(),
+  lastName: text("last_name").notNull(),
+  email: text("email"),
+  gender: text("gender").notNull().default("male"),
+  level: text("level").notNull().default("intermediate"),
+  clubId: integer("club_id"),
+  totalPoints: integer("total_points").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const insertPlayerSchema = createInsertSchema(players).omit({
+  createdAt: true,
+});
+
+export type InsertPlayer = z.infer<typeof insertPlayerSchema>;
+export type Player = typeof players.$inferSelect;
+
+export interface TournamentRegistrationWithPlayers extends TournamentRegistration {
+  player?: Player;
+  partner?: Player;
+}
