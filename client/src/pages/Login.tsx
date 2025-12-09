@@ -48,8 +48,8 @@ export default function Login({ onLogin }: LoginProps) {
         title: "Benvenuto!",
         description: data.message,
       });
-      if (onLogin) {
-        onLogin(data);
+      if (onLogin && data.player) {
+        onLogin(data.player);
       }
       navigate("/");
     },
