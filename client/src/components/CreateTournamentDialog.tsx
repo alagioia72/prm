@@ -51,7 +51,7 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
   const [level, setLevel] = useState("");
   const [gender, setGender] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(16);
-  const [pointsMultiplier, setPointsMultiplier] = useState(2);
+  const [pointsMultiplier, setPointsMultiplier] = useState(1);
   const [registrationType, setRegistrationType] = useState<RegistrationType>('couple');
   const [format, setFormat] = useState<TournamentFormat>('bracket');
 
@@ -89,7 +89,7 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
     setLevel("");
     setGender("");
     setMaxParticipants(16);
-    setPointsMultiplier(2);
+    setPointsMultiplier(1);
     setRegistrationType('couple');
     setFormat('bracket');
   };
@@ -238,18 +238,31 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="pointsMultiplier">Moltiplicatore Punti</Label>
-              <Select value={String(pointsMultiplier)} onValueChange={(v) => setPointsMultiplier(Number(v))}>
-                <SelectTrigger id="pointsMultiplier" data-testid="select-tournament-multiplier">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">x1</SelectItem>
-                  <SelectItem value="2">x2</SelectItem>
-                  <SelectItem value="3">x3</SelectItem>
-                  <SelectItem value="5">x5</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-1">
+                <Label htmlFor="pointsMultiplier">Moltiplicatore Punti</Label>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="max-w-xs text-xs">Il moltiplicatore moltiplica i punti base della tabella punteggi. Es: x1.5 = 100pt diventa 150pt</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">x</span>
+                <Input
+                  id="pointsMultiplier"
+                  type="number"
+                  min={0.1}
+                  max={10}
+                  step={0.1}
+                  value={pointsMultiplier}
+                  onChange={(e) => setPointsMultiplier(parseFloat(e.target.value) || 1)}
+                  className="pl-7"
+                  data-testid="input-tournament-multiplier"
+                />
+              </div>
             </div>
           </div>
 

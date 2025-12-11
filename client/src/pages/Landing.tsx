@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
 
-// todo: remove mock functionality
 const upcomingTournaments: Tournament[] = [
   {
     id: 1,
@@ -18,6 +17,8 @@ const upcomingTournaments: Tournament[] = [
     currentParticipants: 12,
     status: 'open',
     pointsMultiplier: 2,
+    registrationType: 'couple',
+    format: 'bracket',
   },
   {
     id: 2,
@@ -30,6 +31,8 @@ const upcomingTournaments: Tournament[] = [
     currentParticipants: 28,
     status: 'open',
     pointsMultiplier: 3,
+    registrationType: 'couple',
+    format: 'bracket',
   },
   {
     id: 3,
@@ -42,6 +45,8 @@ const upcomingTournaments: Tournament[] = [
     currentParticipants: 5,
     status: 'open',
     pointsMultiplier: 1,
+    registrationType: 'individual',
+    format: 'round_robin',
   },
 ];
 
@@ -100,16 +105,18 @@ export default function Landing({ isAuthenticated = false }: LandingProps) {
 
       <section className="py-16 px-4 bg-muted/30">
         <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 gap-4">
             <h2 className="text-3xl font-bold" data-testid="text-tournaments-title">
               Prossimi Tornei
             </h2>
-            <Link href="/tournaments">
-              <Button variant="outline" className="gap-2" data-testid="button-all-tournaments">
-                Vedi Tutti
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            {isAuthenticated && (
+              <Link href="/tournaments">
+                <Button variant="outline" className="gap-2" data-testid="button-all-tournaments">
+                  Vedi Tutti
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {upcomingTournaments.map((tournament) => (
@@ -118,6 +125,7 @@ export default function Landing({ isAuthenticated = false }: LandingProps) {
                 tournament={tournament}
                 onRegister={(id) => console.log('Register for:', id)}
                 onViewDetails={(id) => console.log('View details:', id)}
+                isAuthenticated={isAuthenticated}
               />
             ))}
           </div>
@@ -131,11 +139,18 @@ export default function Landing({ isAuthenticated = false }: LandingProps) {
             Unisciti alla community di giocatori di padel e inizia a scalare la classifica.
           </p>
           {!isAuthenticated && (
-            <a href="/api/login">
-              <Button size="lg" className="gap-2" data-testid="button-cta-register">
-                Registrati Gratuitamente
-              </Button>
-            </a>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link href="/register">
+                <Button size="lg" className="gap-2" data-testid="button-cta-register">
+                  Registrati Gratuitamente
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button size="lg" variant="outline" className="gap-2" data-testid="button-cta-login">
+                  Accedi
+                </Button>
+              </Link>
+            </div>
           )}
         </div>
       </section>

@@ -77,10 +77,83 @@ Il prototipo include:
 2. **Amministratore**: Tutte le funzionalità giocatore + creazione tornei, gestione utenti
 
 ## Scoring System
-- Partite singole: Punti base
-- Tornei: Punti moltiplicati (x2, x3, x5) in base al livello torneo
+- **Profili punteggio configurabili**: Admin può definire punti per le prime 16 posizioni
+- **Punti partecipazione**: Per giocatori oltre la 16° posizione
+- **Moltiplicatori decimali**: Ogni torneo ha un moltiplicatore (0.1-10x) che moltiplica i punti base
+- **Preview in tempo reale**: La tab Punteggi mostra anteprima dei punti con moltiplicatori x1, x1.5, x2
+- **Default**: 1°=100pt, 2°=80pt, 3°=65pt, etc. Partecipazione=10pt
+- **Periodo Rolling**: I punti vengono calcolati solo per partite/tornei entro un periodo configurabile in settimane
+
+## Rolling Weeks Configuration
+- **Configurazione a livello catena**: L'admin può impostare un periodo rolling default per tutta la catena
+- **Configurazione a livello club**: Ogni club può avere un periodo rolling specifico che sovrascrive quello della catena
+- **Opzioni disponibili**: 4, 8, 12, 16, 24, 52 settimane o nessun limite
+- **API endpoint**: GET /api/rankings?gender=&level=&clubId= calcola i punti rispettando il periodo rolling
+- **Gestione**: Dashboard Admin > Tab Impostazioni
+
+## Partite Libere (Free Matches)
+- I giocatori possono registrare partite giocate fuori dai tornei
+- Punti calcolati automaticamente in base al numero di set:
+  - **2 set**: 1/5 dei punti del 1° classificato (100/5 = 20 pt)
+  - **3 set**: 1/6 dei punti del 1° classificato (100/6 ≈ 17 pt)
+- La pagina "Le Mie Partite" mostra lo storico completo
+- Ogni partita mostra data, squadre, punteggi e punti assegnati
+
+## Gestione Multi-Sede
+- **Catena di club**: Il sistema supporta più sedi/club nella stessa catena
+- **Gestione sedi**: Solo gli amministratori possono creare/modificare sedi
+- **Affiliazione giocatore**: Ogni giocatore appartiene a un solo club
+- **Partecipazione tornei**: Giocatori possono partecipare ai tornei di tutte le sedi
+- **Classifiche doppie**: 
+  - Globale: tutti i giocatori di tutte le sedi
+  - Locale: solo i giocatori di una specifica sede
+
+## User Authentication
+- **Registrazione**: POST /api/auth/register con validazione email, password hashata con bcrypt
+- **Login**: POST /api/auth/login con verifica password e controllo email verificata
+- **Verifica Email**: GET /api/auth/verify-email?token=xxx conferma email utente
+- **Reinvio Verifica**: POST /api/auth/resend-verification per rinviare email di verifica
+- **Password**: Cifrata con bcrypt (10 rounds), mai esposta nelle API
+- **Session**: Salvata in localStorage (frontend), include role per determinare privilegi admin
+
+## Email Notifications (Resend)
+- Email di verifica inviate alla registrazione
+- Notifiche automatiche ai giocatori idonei quando viene creato un nuovo torneo
+- Template HTML responsive con branding Padel Club
 
 ## Recent Changes
+- 2024-12-11: Implementato sistema periodo rolling per calcolo classifiche (configurabile per catena e per club)
+- 2024-12-11: Tab "Impostazioni" in admin dashboard per configurare rolling weeks
+- 2024-12-11: API /api/rankings con supporto per filtro periodo rolling
+- 2024-12-11: API PATCH /api/clubs/:id per aggiornare rolling weeks del club
+- 2024-12-11: API /api/chain-settings per gestione impostazioni a livello catena
+- 2024-12-09: Implementato sistema registrazione utenti con password cifrata bcrypt
+- 2024-12-09: Aggiunta verifica email con token e reinvio verifica
+- 2024-12-09: Integrato Resend per invio email transazionali
+- 2024-12-09: Notifiche email automatiche ai giocatori idonei alla creazione torneo
+- 2024-12-09: Pagine Register, Login, VerifyEmail nel frontend
+- 2024-12-09: AuthProvider context per gestione stato autenticazione
+- 2024-12-09: Navbar aggiornata con login/logout funzionanti
+- 2024-12-09: Aggiunta tabella players con gender e level per gestione giocatori
+- 2024-12-09: Validazione eligibilità giocatori: genere e livello devono corrispondere al torneo
+- 2024-12-09: TournamentDetailsDialog mostra lista iscritti con nomi giocatori reali
+- 2024-12-09: TournamentRegistrationDialog usa API players reali e mostra errori eligibilità
+- 2024-12-09: API /api/players per gestione giocatori (GET all, GET by id)
+- 2024-12-09: API /api/tournaments/:id/registrations?withPlayers=true per dettagli iscritti
+- 2024-12-09: Implementato sistema iscrizione tornei completo (schema, storage, API, UI)
+- 2024-12-09: TournamentRegistrationDialog per iscrizione a tornei (coppia/individuale)
+- 2024-12-09: API endpoints per registrazioni CRUD (GET/POST/DELETE /api/tournaments/:id/register)
+- 2024-12-08: Implementato sistema assegnazione classifica tornei da parte degli amministratori
+- 2024-12-08: TournamentDetailsDialog mostra classifica finale con nomi giocatori e punti
+- 2024-12-08: Admin può modificare classifica in qualsiasi momento dai dettagli torneo
+- 2024-12-08: Punti calcolati automaticamente (punti base × moltiplicatore torneo)
+- 2024-12-08: Implementato sistema partite libere (matches table + CRUD API)
+- 2024-12-08: Dialog registrazione partita con calcolo punti automatico (1/5 per 2 set, 1/6 per 3 set)
+- 2024-12-08: Pagina "Le Mie Partite" connessa al backend per visualizzazione partite reali
+- 2024-12-06: Aggiunto sistema punteggi configurabile con profili, 16 posizioni + punti partecipazione
+- 2024-12-06: Tab "Punteggi" in admin dashboard con tabella editabile e preview moltiplicatori
+- 2024-12-06: Moltiplicatore torneo con supporto decimali (0.1-10x, step 0.1)
+- 2024-12-06: Aggiunta gestione multi-sede (club chain) con classifiche globali/locali
 - 2024-12-04: Aggiunto supporto per tipi di iscrizione (coppia/individuale) e formati (tabellone/round-robin)
 - 2024-12-04: Creato prototipo frontend completo con tutti i componenti e pagine
 - 2024-12-04: Configurato tema con colori verdi (primary) per l'app sportiva

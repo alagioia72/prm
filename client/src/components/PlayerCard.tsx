@@ -1,4 +1,4 @@
-import { Trophy, Target, TrendingUp } from "lucide-react";
+import { Trophy, Target, TrendingUp, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,7 @@ interface PlayerCardProps {
     ranking: number;
     matchesPlayed: number;
     wins: number;
+    clubName?: string;
   };
   onViewProfile?: (id: number) => void;
 }
@@ -54,6 +55,12 @@ export function PlayerCard({ player, onViewProfile }: PlayerCardProps) {
               <Badge variant="outline">{genderLabels[player.gender]}</Badge>
               <Badge variant="outline">{levelLabels[player.level]}</Badge>
             </div>
+            {player.clubName && (
+              <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1 truncate">
+                <Building2 className="h-3 w-3 shrink-0" />
+                <span className="truncate">{player.clubName}</span>
+              </p>
+            )}
           </div>
         </div>
       </CardHeader>

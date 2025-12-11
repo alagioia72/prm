@@ -1,4 +1,4 @@
-import { Calendar, Trophy } from "lucide-react";
+import { Calendar, Trophy, Star } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -88,13 +88,24 @@ export function MatchResultCard({ match, highlightPlayerId }: MatchResultCardPro
             </div>
           </div>
           
-          <div className="text-right">
+          <div className="text-right space-y-1">
             <div className="text-2xl font-bold tabular-nums" data-testid={`text-score-${match.id}`}>
               {formatScore(match.score1, match.score2)}
             </div>
-            <div className="text-sm text-muted-foreground">
-              +{match.pointsAwarded} punti
+            <div className="flex items-center justify-end gap-1 text-sm" data-testid={`text-points-${match.id}`}>
+              <Star className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className={cn(
+                "font-medium",
+                highlightPlayerId && playerWon && "text-green-600 dark:text-green-400"
+              )}>
+                {highlightPlayerId && playerWon ? "+" : ""}{match.pointsAwarded} pt
+              </span>
             </div>
+            {match.type === 'single' && (
+              <div className="text-xs text-muted-foreground">
+                {match.score1.length === 2 ? "2 set (1/5)" : "3 set (1/6)"}
+              </div>
+            )}
           </div>
         </div>
       </CardContent>

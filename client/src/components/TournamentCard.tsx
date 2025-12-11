@@ -1,4 +1,4 @@
-import { Calendar, Users, MapPin, User, Users2 } from "lucide-react";
+import { Calendar, Users, MapPin, User, Users2, Star, Trophy } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,7 +27,10 @@ interface TournamentCardProps {
   tournament: Tournament;
   onRegister?: (id: number) => void;
   onViewDetails?: (id: number) => void;
+  onAssignRanking?: (tournament: Tournament) => void;
   isRegistered?: boolean;
+  isAdmin?: boolean;
+  isAuthenticated?: boolean;
 }
 
 const levelLabels = {
@@ -58,7 +61,7 @@ const formatLabels = {
   round_robin: 'Tutti vs Tutti',
 };
 
-export function TournamentCard({ tournament, onRegister, onViewDetails, isRegistered }: TournamentCardProps) {
+export function TournamentCard({ tournament, onRegister, onViewDetails, onAssignRanking, isRegistered, isAdmin, isAuthenticated }: TournamentCardProps) {
   const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
   const participantLabel = tournament.registrationType === 'couple' ? 'coppie' : 'giocatori';
   
@@ -79,7 +82,14 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, isRegist
         <div className="flex flex-wrap gap-2 mt-2">
           <Badge variant="outline">{levelLabels[tournament.level]}</Badge>
           <Badge variant="outline">{genderLabels[tournament.gender]}</Badge>
-          <Badge variant="secondary">x{tournament.pointsMultiplier} punti</Badge>
+          <Badge 
+            variant="secondary" 
+            className="gap-1"
+            data-testid={`badge-multiplier-${tournament.id}`}
+          >
+            <Star className="h-3 w-3" />
+            x{tournament.pointsMultiplier % 1 === 0 ? tournament.pointsMultiplier : tournament.pointsMultiplier.toFixed(1)}
+          </Badge>
         </div>
       </CardHeader>
       
@@ -126,8 +136,8 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, isRegist
         </div>
       </CardContent>
       
-      <CardFooter className="pt-0 gap-2">
-        {tournament.status === 'open' && !isRegistered && spotsLeft > 0 && (
+      <CardFooter className="pt-0 gap-2 flex-wrap">
+        {isAuthenticated && tournament.status === 'open' && !isRegistered && spotsLeft > 0 && (
           <Button 
             className="flex-1" 
             onClick={() => onRegister?.(tournament.id)}
@@ -138,6 +148,17 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, isRegist
         )}
         {isRegistered && tournament.status === 'open' && (
           <Badge variant="secondary" className="flex-1 justify-center py-2">Iscritto</Badge>
+        )}
+        {isAdmin && (tournament.status === 'in_progress' || tournament.status === 'completed') && (
+          <Button 
+            variant="default"
+            className="flex-1 gap-1"
+            onClick={() => onAssignRanking?.(tournament)}
+            data-testid={`button-assign-ranking-${tournament.id}`}
+          >
+            <Trophy className="h-4 w-4" />
+            {tournament.status === 'completed' ? 'Modifica Classifica' : 'Assegna Classifica'}
+          </Button>
         )}
         <Button 
           variant="outline" 
