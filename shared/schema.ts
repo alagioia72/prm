@@ -84,8 +84,8 @@ export const tournaments = pgTable("tournaments", {
 });
 
 export const insertTournamentSchema = createInsertSchema(tournaments, {
-  startDate: z.union([z.date(), z.string().transform((s) => new Date(s))]),
-  endDate: z.union([z.date(), z.string().transform((s) => new Date(s))]).optional().nullable(),
+  startDate: z.coerce.date(),
+  endDate: z.coerce.date().optional().nullable(),
 }).omit({
   id: true,
   createdAt: true,
