@@ -105,16 +105,18 @@ export default function Landing({ isAuthenticated = false }: LandingProps) {
 
       <section className="py-16 px-4 bg-muted/30">
         <div className="mx-auto max-w-7xl">
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-8 gap-4">
             <h2 className="text-3xl font-bold" data-testid="text-tournaments-title">
               Prossimi Tornei
             </h2>
-            <Link href="/tournaments">
-              <Button variant="outline" className="gap-2" data-testid="button-all-tournaments">
-                Vedi Tutti
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </Link>
+            {isAuthenticated && (
+              <Link href="/tournaments">
+                <Button variant="outline" className="gap-2" data-testid="button-all-tournaments">
+                  Vedi Tutti
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </Link>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {upcomingTournaments.map((tournament) => (
@@ -123,6 +125,7 @@ export default function Landing({ isAuthenticated = false }: LandingProps) {
                 tournament={tournament}
                 onRegister={(id) => console.log('Register for:', id)}
                 onViewDetails={(id) => console.log('View details:', id)}
+                isAuthenticated={isAuthenticated}
               />
             ))}
           </div>

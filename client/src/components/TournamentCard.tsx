@@ -30,6 +30,7 @@ interface TournamentCardProps {
   onAssignRanking?: (tournament: Tournament) => void;
   isRegistered?: boolean;
   isAdmin?: boolean;
+  isAuthenticated?: boolean;
 }
 
 const levelLabels = {
@@ -60,7 +61,7 @@ const formatLabels = {
   round_robin: 'Tutti vs Tutti',
 };
 
-export function TournamentCard({ tournament, onRegister, onViewDetails, onAssignRanking, isRegistered, isAdmin }: TournamentCardProps) {
+export function TournamentCard({ tournament, onRegister, onViewDetails, onAssignRanking, isRegistered, isAdmin, isAuthenticated }: TournamentCardProps) {
   const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
   const participantLabel = tournament.registrationType === 'couple' ? 'coppie' : 'giocatori';
   
@@ -136,7 +137,7 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, onAssign
       </CardContent>
       
       <CardFooter className="pt-0 gap-2 flex-wrap">
-        {tournament.status === 'open' && !isRegistered && spotsLeft > 0 && (
+        {isAuthenticated && tournament.status === 'open' && !isRegistered && spotsLeft > 0 && (
           <Button 
             className="flex-1" 
             onClick={() => onRegister?.(tournament.id)}

@@ -25,9 +25,9 @@ interface NavbarProps {
 }
 
 const navItems = [
-  { href: "/tournaments", label: "Tornei", icon: Calendar },
-  { href: "/rankings", label: "Classifiche", icon: Trophy },
-  { href: "/players", label: "Giocatori", icon: Users },
+  { href: "/tournaments", label: "Tornei", icon: Calendar, requiresAuth: true },
+  { href: "/rankings", label: "Classifiche", icon: Trophy, requiresAuth: false },
+  { href: "/players", label: "Giocatori", icon: Users, requiresAuth: true },
 ];
 
 export function Navbar({ user, isAuthenticated }: NavbarProps) {
@@ -52,7 +52,9 @@ export function Navbar({ user, isAuthenticated }: NavbarProps) {
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => (
+            {navItems
+              .filter((item) => !item.requiresAuth || isAuthenticated)
+              .map((item) => (
               <Link key={item.href} href={item.href}>
                 <Button
                   variant={location === item.href ? "secondary" : "ghost"}
@@ -142,7 +144,9 @@ export function Navbar({ user, isAuthenticated }: NavbarProps) {
         {mobileMenuOpen && (
           <div className="md:hidden py-4 border-t">
             <div className="flex flex-col gap-2">
-              {navItems.map((item) => (
+              {navItems
+                .filter((item) => !item.requiresAuth || isAuthenticated)
+                .map((item) => (
                 <Link key={item.href} href={item.href}>
                   <Button
                     variant={location === item.href ? "secondary" : "ghost"}
