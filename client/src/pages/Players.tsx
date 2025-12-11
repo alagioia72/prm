@@ -11,11 +11,36 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 
 interface Club {
   id: number;
   name: string;
   city: string;
+}
+
+interface ClubFromAPI {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  courtsCount: number;
+  rollingWeeks: number | null;
+  createdAt: string;
+}
+
+interface PlayerFromAPI {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  level: string;
+  clubId: number | null;
+  totalPoints: number;
+  emailVerified: boolean;
+  role: string;
 }
 
 interface Player {
@@ -33,31 +58,45 @@ interface Player {
   clubName: string;
 }
 
-// todo: remove mock functionality
-const mockClubs: Club[] = [
-  { id: 1, name: "Padel Club Milano Centro", city: "Milano" },
-  { id: 2, name: "Padel Club Milano Nord", city: "Milano" },
-  { id: 3, name: "Padel Club Roma Sud", city: "Roma" },
-];
-
-const mockPlayers: Player[] = [
-  { id: 1, firstName: "Marco", lastName: "Rossi", profileImageUrl: null, gender: 'male', level: 'intermediate', points: 1250, ranking: 1, matchesPlayed: 24, wins: 18, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 2, firstName: "Luca", lastName: "Bianchi", profileImageUrl: null, gender: 'male', level: 'intermediate', points: 1180, ranking: 2, matchesPlayed: 22, wins: 16, clubId: 2, clubName: "Padel Club Milano Nord" },
-  { id: 3, firstName: "Andrea", lastName: "Verdi", profileImageUrl: null, gender: 'male', level: 'advanced', points: 1050, ranking: 3, matchesPlayed: 20, wins: 14, clubId: 3, clubName: "Padel Club Roma Sud" },
-  { id: 4, firstName: "Giuseppe", lastName: "Ferrari", profileImageUrl: null, gender: 'male', level: 'beginner', points: 580, ranking: 4, matchesPlayed: 12, wins: 7, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 11, firstName: "Giulia", lastName: "Martini", profileImageUrl: null, gender: 'female', level: 'intermediate', points: 1150, ranking: 1, matchesPlayed: 20, wins: 16, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 12, firstName: "Chiara", lastName: "Conti", profileImageUrl: null, gender: 'female', level: 'advanced', points: 1080, ranking: 2, matchesPlayed: 18, wins: 14, clubId: 3, clubName: "Padel Club Roma Sud" },
-  { id: 13, firstName: "Sara", lastName: "Esposito", profileImageUrl: null, gender: 'female', level: 'beginner', points: 520, ranking: 3, matchesPlayed: 10, wins: 6, clubId: 2, clubName: "Padel Club Milano Nord" },
-  { id: 14, firstName: "Elena", lastName: "Moretti", profileImageUrl: null, gender: 'female', level: 'intermediate', points: 950, ranking: 4, matchesPlayed: 15, wins: 11, clubId: 1, clubName: "Padel Club Milano Centro" },
-];
-
 export default function Players() {
   const [search, setSearch] = useState("");
   const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [levelFilter, setLevelFilter] = useState<'all' | 'beginner' | 'intermediate' | 'advanced'>('all');
   const [clubFilter, setClubFilter] = useState<string>("all");
 
-  const filteredPlayers = mockPlayers.filter((player) => {
+  const { data: clubsData = [], isLoading: clubsLoading } = useQuery<ClubFromAPI[]>({
+    queryKey: ['/api/clubs'],
+  });
+
+  const { data: playersData = [], isLoading: playersLoading } = useQuery<PlayerFromAPI[]>({
+    queryKey: ['/api/players'],
+  });
+
+  const clubs: Club[] = clubsData.map(c => ({
+    id: c.id,
+    name: c.name,
+    city: c.city,
+  }));
+
+  const players: Player[] = playersData.map((p, index) => {
+    const club = clubsData.find(c => c.id === p.clubId);
+    return {
+      id: index + 1,
+      firstName: p.firstName,
+      lastName: p.lastName,
+      profileImageUrl: null,
+      gender: p.gender as 'male' | 'female',
+      level: p.level as 'beginner' | 'intermediate' | 'advanced',
+      points: p.totalPoints,
+      ranking: 0,
+      matchesPlayed: 0,
+      wins: 0,
+      clubId: p.clubId || 0,
+      clubName: club?.name || "Nessuna sede",
+    };
+  });
+
+  const filteredPlayers = players.filter((player) => {
     const matchesSearch = search === "" || 
       `${player.firstName} ${player.lastName}`.toLowerCase().includes(search.toLowerCase());
     const matchesGender = genderFilter === 'all' || player.gender === genderFilter;
@@ -66,7 +105,9 @@ export default function Players() {
     return matchesSearch && matchesGender && matchesLevel && matchesClub;
   });
 
-  const selectedClub = clubFilter !== 'all' ? mockClubs.find(c => c.id === parseInt(clubFilter)) : null;
+  const selectedClub = clubFilter !== 'all' ? clubs.find(c => c.id === parseInt(clubFilter)) : null;
+
+  const isLoading = clubsLoading || playersLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,7 +145,7 @@ export default function Players() {
                     Tutte le sedi
                   </span>
                 </SelectItem>
-                {mockClubs.map((club) => (
+                {clubs.map((club) => (
                   <SelectItem key={club.id} value={String(club.id)}>
                     <span className="flex items-center gap-2">
                       <Building2 className="h-4 w-4" />
@@ -141,7 +182,11 @@ export default function Players() {
           </div>
         </div>
 
-        {filteredPlayers.length > 0 ? (
+        {isLoading ? (
+          <div className="text-center py-16 text-muted-foreground">
+            Caricamento giocatori...
+          </div>
+        ) : filteredPlayers.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredPlayers.map((player) => (
               <PlayerCard
@@ -152,9 +197,15 @@ export default function Players() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 text-muted-foreground">
-            Nessun giocatore trovato
-          </div>
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Users className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nessun giocatore</h3>
+              <p className="text-muted-foreground">
+                Nessun giocatore trovato per i filtri selezionati.
+              </p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

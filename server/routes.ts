@@ -479,7 +479,8 @@ export async function registerRoutes(
 
   app.get("/api/players", async (req, res) => {
     const players = await storage.getPlayers();
-    res.json(players);
+    const safePlayers = players.map(({ password, verificationToken, ...safe }) => safe);
+    res.json(safePlayers);
   });
 
   app.get("/api/players/:id", async (req, res) => {

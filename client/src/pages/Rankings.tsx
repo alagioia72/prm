@@ -10,6 +10,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 
 interface Club {
   id: number;
@@ -17,38 +19,33 @@ interface Club {
   city: string;
 }
 
-// todo: remove mock functionality
-const mockClubs: Club[] = [
-  { id: 1, name: "Padel Club Milano Centro", city: "Milano" },
-  { id: 2, name: "Padel Club Milano Nord", city: "Milano" },
-  { id: 3, name: "Padel Club Roma Sud", city: "Roma" },
-];
-
-interface RankedPlayerWithClub extends RankedPlayer {
-  clubId: number;
-  clubName: string;
+interface ClubFromAPI {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  courtsCount: number;
+  rollingWeeks: number | null;
+  createdAt: string;
 }
 
-const mockMalePlayers: RankedPlayerWithClub[] = [
-  { id: 1, position: 1, previousPosition: 2, firstName: "Marco", lastName: "Rossi", profileImageUrl: null, points: 1250, matchesPlayed: 24, wins: 18, losses: 6, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 2, position: 2, previousPosition: 1, firstName: "Luca", lastName: "Bianchi", profileImageUrl: null, points: 1180, matchesPlayed: 22, wins: 16, losses: 6, clubId: 2, clubName: "Padel Club Milano Nord" },
-  { id: 3, position: 3, previousPosition: 3, firstName: "Andrea", lastName: "Verdi", profileImageUrl: null, points: 1050, matchesPlayed: 20, wins: 14, losses: 6, clubId: 3, clubName: "Padel Club Roma Sud" },
-  { id: 4, position: 4, previousPosition: 6, firstName: "Giuseppe", lastName: "Ferrari", profileImageUrl: null, points: 980, matchesPlayed: 18, wins: 12, losses: 6, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 5, position: 5, previousPosition: null, firstName: "Paolo", lastName: "Romano", profileImageUrl: null, points: 920, matchesPlayed: 15, wins: 10, losses: 5, clubId: 3, clubName: "Padel Club Roma Sud" },
-  { id: 6, position: 6, previousPosition: 4, firstName: "Matteo", lastName: "Greco", profileImageUrl: null, points: 890, matchesPlayed: 16, wins: 10, losses: 6, clubId: 2, clubName: "Padel Club Milano Nord" },
-  { id: 7, position: 7, previousPosition: 8, firstName: "Simone", lastName: "Marino", profileImageUrl: null, points: 820, matchesPlayed: 14, wins: 9, losses: 5, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 8, position: 8, previousPosition: 5, firstName: "Francesco", lastName: "Costa", profileImageUrl: null, points: 780, matchesPlayed: 18, wins: 9, losses: 9, clubId: 3, clubName: "Padel Club Roma Sud" },
-  { id: 9, position: 9, previousPosition: 9, firstName: "Alessandro", lastName: "Bruno", profileImageUrl: null, points: 720, matchesPlayed: 12, wins: 7, losses: 5, clubId: 2, clubName: "Padel Club Milano Nord" },
-  { id: 10, position: 10, previousPosition: 11, firstName: "Davide", lastName: "Ricci", profileImageUrl: null, points: 680, matchesPlayed: 14, wins: 7, losses: 7, clubId: 1, clubName: "Padel Club Milano Centro" },
-];
+interface PlayerFromAPI {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  level: string;
+  clubId: number | null;
+  totalPoints: number;
+  emailVerified: boolean;
+  role: string;
+}
 
-const mockFemalePlayers: RankedPlayerWithClub[] = [
-  { id: 11, position: 1, previousPosition: 1, firstName: "Giulia", lastName: "Martini", profileImageUrl: null, points: 1150, matchesPlayed: 20, wins: 16, losses: 4, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 12, position: 2, previousPosition: 3, firstName: "Chiara", lastName: "Conti", profileImageUrl: null, points: 1080, matchesPlayed: 18, wins: 14, losses: 4, clubId: 3, clubName: "Padel Club Roma Sud" },
-  { id: 13, position: 3, previousPosition: 2, firstName: "Sara", lastName: "Esposito", profileImageUrl: null, points: 1020, matchesPlayed: 19, wins: 13, losses: 6, clubId: 2, clubName: "Padel Club Milano Nord" },
-  { id: 14, position: 4, previousPosition: null, firstName: "Elena", lastName: "Moretti", profileImageUrl: null, points: 950, matchesPlayed: 15, wins: 11, losses: 4, clubId: 1, clubName: "Padel Club Milano Centro" },
-  { id: 15, position: 5, previousPosition: 4, firstName: "Valentina", lastName: "Barbieri", profileImageUrl: null, points: 890, matchesPlayed: 16, wins: 10, losses: 6, clubId: 3, clubName: "Padel Club Roma Sud" },
-];
+interface RankedPlayerWithClub extends RankedPlayer {
+  clubId: number | null;
+  clubName: string;
+}
 
 export default function Rankings() {
   const [gender, setGender] = useState<'male' | 'female'>('male');
@@ -56,7 +53,39 @@ export default function Rankings() {
   const [scope, setScope] = useState<'global' | 'local'>('global');
   const [selectedClubId, setSelectedClubId] = useState<string>("1");
 
-  const allPlayers = gender === 'male' ? mockMalePlayers : mockFemalePlayers;
+  const { data: clubsData = [], isLoading: clubsLoading } = useQuery<ClubFromAPI[]>({
+    queryKey: ['/api/clubs'],
+  });
+
+  const { data: playersData = [], isLoading: playersLoading } = useQuery<PlayerFromAPI[]>({
+    queryKey: ['/api/players'],
+  });
+
+  const clubs: Club[] = clubsData.map(c => ({
+    id: c.id,
+    name: c.name,
+    city: c.city,
+  }));
+
+  const allPlayers: RankedPlayerWithClub[] = playersData
+    .filter(p => p.gender === gender && p.level === level && p.emailVerified)
+    .map((p, index) => {
+      const club = clubsData.find(c => c.id === p.clubId);
+      return {
+        id: parseInt(p.id) || index + 1,
+        position: index + 1,
+        previousPosition: null,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        profileImageUrl: null,
+        points: p.totalPoints,
+        matchesPlayed: 0,
+        wins: 0,
+        losses: 0,
+        clubId: p.clubId,
+        clubName: club?.name || "Nessuna sede",
+      };
+    });
   
   const filteredPlayers = scope === 'global' 
     ? allPlayers 
@@ -69,7 +98,9 @@ export default function Rankings() {
     position: index + 1,
   }));
 
-  const selectedClub = mockClubs.find(c => c.id === parseInt(selectedClubId));
+  const selectedClub = clubs.find(c => c.id === parseInt(selectedClubId));
+
+  const isLoading = clubsLoading || playersLoading;
 
   return (
     <div className="min-h-screen bg-background">
@@ -105,7 +136,7 @@ export default function Rankings() {
                   <SelectValue placeholder="Seleziona sede" />
                 </SelectTrigger>
                 <SelectContent>
-                  {mockClubs.map((club) => (
+                  {clubs.map((club) => (
                     <SelectItem key={club.id} value={String(club.id)}>
                       {club.name}
                     </SelectItem>
@@ -118,7 +149,7 @@ export default function Rankings() {
           {scope === 'global' && (
             <Badge variant="secondary" className="gap-1">
               <Globe className="h-3 w-3" />
-              Tutte le sedi ({mockClubs.length})
+              Tutte le sedi ({clubs.length})
             </Badge>
           )}
 
@@ -130,13 +161,29 @@ export default function Rankings() {
           )}
         </div>
 
-        <RankingsTable
-          players={rankedPlayers}
-          gender={gender}
-          level={level}
-          onGenderChange={setGender}
-          onLevelChange={setLevel}
-        />
+        {isLoading ? (
+          <div className="text-center py-16 text-muted-foreground">
+            Caricamento classifiche...
+          </div>
+        ) : rankedPlayers.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nessun giocatore</h3>
+              <p className="text-muted-foreground">
+                Non ci sono ancora giocatori registrati per questa categoria.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <RankingsTable
+            players={rankedPlayers}
+            gender={gender}
+            level={level}
+            onGenderChange={setGender}
+            onLevelChange={setLevel}
+          />
+        )}
       </div>
     </div>
   );

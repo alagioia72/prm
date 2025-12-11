@@ -8,7 +8,7 @@ import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { CreateTournamentDialog } from "@/components/CreateTournamentDialog";
 import { TournamentDetailsDialog } from "@/components/TournamentDetailsDialog";
 import { TournamentRegistrationDialog } from "@/components/TournamentRegistrationDialog";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Tournament as BackendTournament } from "@shared/schema";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
@@ -46,93 +46,45 @@ interface RankingEntry {
   player2Id?: string;
 }
 
-const mockPlayers: Player[] = [
-  { id: "player-1", firstName: "Marco", lastName: "Rossi" },
-  { id: "player-2", firstName: "Luca", lastName: "Bianchi" },
-  { id: "player-3", firstName: "Andrea", lastName: "Verdi" },
-  { id: "player-4", firstName: "Giuseppe", lastName: "Ferrari" },
-  { id: "player-5", firstName: "Paolo", lastName: "Romano" },
-  { id: "player-6", firstName: "Matteo", lastName: "Greco" },
-  { id: "player-7", firstName: "Simone", lastName: "Marino" },
-  { id: "player-8", firstName: "Roberto", lastName: "Neri" },
-  { id: "player-9", firstName: "Carlo", lastName: "Gialli" },
-  { id: "player-10", firstName: "Antonio", lastName: "Blu" },
-  { id: "player-11", firstName: "Stefano", lastName: "Rosa" },
-  { id: "player-12", firstName: "Fabio", lastName: "Viola" },
-];
+interface TournamentFromAPI {
+  id: number;
+  name: string;
+  clubId: number;
+  startDate: string;
+  endDate: string | null;
+  registrationType: string;
+  format: string;
+  gender: string;
+  level: string;
+  maxParticipants: number;
+  pointsMultiplier: number;
+  scoringProfileId: number | null;
+  status: string;
+  createdAt: string;
+}
 
-const mockTournaments: Tournament[] = [
-  {
-    id: 1,
-    name: "Torneo Primavera 2024",
-    date: new Date("2024-04-15"),
-    location: "Padel Club Milano",
-    level: 'intermediate',
-    gender: 'mixed',
-    maxParticipants: 16,
-    currentParticipants: 12,
-    status: 'open',
-    pointsMultiplier: 2,
-    registrationType: 'couple',
-    format: 'bracket',
-  },
-  {
-    id: 2,
-    name: "Campionato Regionale",
-    date: new Date("2024-04-22"),
-    location: "Centro Sportivo Roma",
-    level: 'advanced',
-    gender: 'male',
-    maxParticipants: 32,
-    currentParticipants: 28,
-    status: 'open',
-    pointsMultiplier: 3,
-    registrationType: 'couple',
-    format: 'bracket',
-  },
-  {
-    id: 3,
-    name: "Round Robin Principianti",
-    date: new Date("2024-04-28"),
-    location: "Padel Arena Napoli",
-    level: 'beginner',
-    gender: 'female',
-    maxParticipants: 8,
-    currentParticipants: 5,
-    status: 'open',
-    pointsMultiplier: 1,
-    registrationType: 'individual',
-    format: 'round_robin',
-  },
-  {
-    id: 4,
-    name: "Master Cup Inverno",
-    date: new Date("2024-02-10"),
-    location: "Padel Center Torino",
-    level: 'advanced',
-    gender: 'male',
-    maxParticipants: 16,
-    currentParticipants: 16,
-    status: 'completed',
-    pointsMultiplier: 3,
-    registrationType: 'couple',
-    format: 'bracket',
-  },
-  {
-    id: 5,
-    name: "Ladies Open Round Robin",
-    date: new Date("2024-03-08"),
-    location: "Tennis Club Firenze",
-    level: 'intermediate',
-    gender: 'female',
-    maxParticipants: 16,
-    currentParticipants: 16,
-    status: 'in_progress',
-    pointsMultiplier: 2,
-    registrationType: 'couple',
-    format: 'round_robin',
-  },
-];
+interface ClubFromAPI {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  courtsCount: number;
+  rollingWeeks: number | null;
+  createdAt: string;
+}
+
+interface PlayerFromAPI {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  level: string;
+  clubId: number | null;
+  totalPoints: number;
+  emailVerified: boolean;
+  role: string;
+}
 
 export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   const [search, setSearch] = useState("");
@@ -151,12 +103,52 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   const [registrationDialogOpen, setRegistrationDialogOpen] = useState(false);
   const [registrationTournament, setRegistrationTournament] = useState<BackendTournament | null>(null);
   
-  const currentPlayerId = "player-1";
-  
   const { toast } = useToast();
+
+  const { data: tournamentsData = [], isLoading: tournamentsLoading } = useQuery<TournamentFromAPI[]>({
+    queryKey: ['/api/tournaments'],
+  });
+
+  const { data: clubsData = [] } = useQuery<ClubFromAPI[]>({
+    queryKey: ['/api/clubs'],
+  });
+
+  const { data: playersData = [] } = useQuery<PlayerFromAPI[]>({
+    queryKey: ['/api/players'],
+  });
 
   const { data: scoringProfile } = useQuery<ScoringProfileWithEntries>({
     queryKey: ['/api/scoring-profiles/default'],
+  });
+
+  const players: Player[] = playersData.map(p => ({
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+  }));
+
+  const mapStatus = (status: string): 'open' | 'in_progress' | 'completed' => {
+    if (status === 'upcoming' || status === 'open') return 'open';
+    if (status === 'in_progress') return 'in_progress';
+    return 'completed';
+  };
+
+  const tournaments: Tournament[] = tournamentsData.map(t => {
+    const club = clubsData.find(c => c.id === t.clubId);
+    return {
+      id: t.id,
+      name: t.name,
+      date: new Date(t.startDate),
+      location: club?.name || "Sede sconosciuta",
+      level: t.level as 'beginner' | 'intermediate' | 'advanced',
+      gender: t.gender as 'male' | 'female' | 'mixed',
+      maxParticipants: t.maxParticipants,
+      currentParticipants: 0,
+      status: mapStatus(t.status),
+      pointsMultiplier: t.pointsMultiplier,
+      registrationType: t.registrationType as 'couple' | 'individual',
+      format: t.format as 'bracket' | 'round_robin',
+    };
   });
 
   const saveResultsMutation = useMutation({
@@ -185,7 +177,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
     },
   });
 
-  const filteredTournaments = mockTournaments.filter((t) => {
+  const filteredTournaments = tournaments.filter((t) => {
     if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
     if (levelFilter !== "all" && t.level !== levelFilter) return false;
@@ -207,7 +199,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   };
 
   const handleViewDetails = (tournamentId: number) => {
-    const tournament = mockTournaments.find(t => t.id === tournamentId);
+    const tournament = tournaments.find(t => t.id === tournamentId);
     if (tournament) {
       setDetailsTournament(tournament);
       setDetailsDialogOpen(true);
@@ -220,23 +212,23 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   };
 
   const handleRegister = (tournamentId: number) => {
-    const tournament = mockTournaments.find(t => t.id === tournamentId);
-    if (tournament) {
+    const apiTournament = tournamentsData.find(t => t.id === tournamentId);
+    if (apiTournament) {
       const backendTournament: BackendTournament = {
-        id: tournament.id,
-        name: tournament.name,
-        clubId: 1,
-        startDate: tournament.date,
-        endDate: null,
-        registrationType: tournament.registrationType,
-        format: tournament.format,
-        gender: tournament.gender,
-        level: tournament.level,
-        maxParticipants: tournament.maxParticipants,
-        pointsMultiplier: tournament.pointsMultiplier,
-        scoringProfileId: null,
-        status: tournament.status === 'open' ? 'upcoming' : tournament.status === 'in_progress' ? 'in_progress' : 'completed',
-        createdAt: new Date(),
+        id: apiTournament.id,
+        name: apiTournament.name,
+        clubId: apiTournament.clubId,
+        startDate: new Date(apiTournament.startDate),
+        endDate: apiTournament.endDate ? new Date(apiTournament.endDate) : null,
+        registrationType: apiTournament.registrationType,
+        format: apiTournament.format,
+        gender: apiTournament.gender,
+        level: apiTournament.level,
+        maxParticipants: apiTournament.maxParticipants,
+        pointsMultiplier: apiTournament.pointsMultiplier,
+        scoringProfileId: apiTournament.scoringProfileId,
+        status: apiTournament.status,
+        createdAt: new Date(apiTournament.createdAt),
       };
       setRegistrationTournament(backendTournament);
       setRegistrationDialogOpen(true);
@@ -307,7 +299,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
     const usedIds = getUsedPlayerIds();
     const currentRanking = rankings.find(r => r.position === currentPosition);
     
-    return mockPlayers.filter(p => {
+    return players.filter(p => {
       if (usedIds.has(p.id)) {
         if (isSecondPlayer && currentRanking?.playerId === p.id) return false;
         if (!isSecondPlayer && currentRanking?.player2Id === p.id) return false;
@@ -439,83 +431,99 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
           </div>
         </div>
 
-        <Tabs defaultValue="open" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="open" className="gap-2" data-testid="tab-open">
-              Iscrizioni Aperte
-              <Badge variant="secondary">{openTournaments.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="in_progress" className="gap-2" data-testid="tab-in-progress">
-              In Corso
-              <Badge variant="secondary">{inProgressTournaments.length}</Badge>
-            </TabsTrigger>
-            <TabsTrigger value="completed" className="gap-2" data-testid="tab-completed">
-              Conclusi
-              <Badge variant="secondary">{completedTournaments.length}</Badge>
-            </TabsTrigger>
-          </TabsList>
+        {tournamentsLoading ? (
+          <div className="text-center py-16 text-muted-foreground">
+            Caricamento tornei...
+          </div>
+        ) : tournaments.length === 0 ? (
+          <Card>
+            <CardContent className="py-16 text-center">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">Nessun torneo</h3>
+              <p className="text-muted-foreground">
+                Non ci sono ancora tornei registrati nel sistema.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <Tabs defaultValue="open" className="space-y-6">
+            <TabsList>
+              <TabsTrigger value="open" className="gap-2" data-testid="tab-open">
+                Iscrizioni Aperte
+                <Badge variant="secondary">{openTournaments.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="in_progress" className="gap-2" data-testid="tab-in-progress">
+                In Corso
+                <Badge variant="secondary">{inProgressTournaments.length}</Badge>
+              </TabsTrigger>
+              <TabsTrigger value="completed" className="gap-2" data-testid="tab-completed">
+                Conclusi
+                <Badge variant="secondary">{completedTournaments.length}</Badge>
+              </TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="open">
-            {openTournaments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {openTournaments.map((tournament) => (
-                  <TournamentCard
-                    key={tournament.id}
-                    tournament={tournament}
-                    onRegister={handleRegister}
-                    onViewDetails={handleViewDetails}
-                    isAdmin={isAdmin}
-                    onAssignRanking={handleAssignRanking}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                Nessun torneo con iscrizioni aperte
-              </div>
-            )}
-          </TabsContent>
+            <TabsContent value="open">
+              {openTournaments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {openTournaments.map((tournament) => (
+                    <TournamentCard
+                      key={tournament.id}
+                      tournament={tournament}
+                      onRegister={handleRegister}
+                      onViewDetails={handleViewDetails}
+                      isAdmin={isAdmin}
+                      onAssignRanking={handleAssignRanking}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 text-muted-foreground">
+                  Nessun torneo con iscrizioni aperte
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="in_progress">
-            {inProgressTournaments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {inProgressTournaments.map((tournament) => (
-                  <TournamentCard
-                    key={tournament.id}
-                    tournament={tournament}
-                    onViewDetails={handleViewDetails}
-                    isAdmin={isAdmin}
-                    onAssignRanking={handleAssignRanking}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                Nessun torneo in corso
-              </div>
-            )}
-          </TabsContent>
+            <TabsContent value="in_progress">
+              {inProgressTournaments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {inProgressTournaments.map((tournament) => (
+                    <TournamentCard
+                      key={tournament.id}
+                      tournament={tournament}
+                      onViewDetails={handleViewDetails}
+                      isAdmin={isAdmin}
+                      onAssignRanking={handleAssignRanking}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 text-muted-foreground">
+                  Nessun torneo in corso
+                </div>
+              )}
+            </TabsContent>
 
-          <TabsContent value="completed">
-            {completedTournaments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {completedTournaments.map((tournament) => (
-                  <TournamentCard
-                    key={tournament.id}
-                    tournament={tournament}
-                    onViewDetails={handleViewDetails}
-                    isAdmin={isAdmin}
-                    onAssignRanking={handleAssignRanking}
-                  />
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16 text-muted-foreground">
-                Nessun torneo concluso
-              </div>
-            )}
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="completed">
+              {completedTournaments.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {completedTournaments.map((tournament) => (
+                    <TournamentCard
+                      key={tournament.id}
+                      tournament={tournament}
+                      onViewDetails={handleViewDetails}
+                      isAdmin={isAdmin}
+                      onAssignRanking={handleAssignRanking}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16 text-muted-foreground">
+                  Nessun torneo concluso
+                </div>
+              )}
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       <Dialog open={rankingDialogOpen} onOpenChange={setRankingDialogOpen}>
@@ -613,7 +621,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                             value={entry.playerId}
                             onValueChange={(value) => handlePlayerSelect(entry.position, value, false)}
                           >
-                            <SelectTrigger className="flex-1" data-testid={`select-position-${entry.position}-player`}>
+                            <SelectTrigger className="flex-1" data-testid={`select-position-${entry.position}`}>
                               <SelectValue placeholder="Seleziona giocatore" />
                             </SelectTrigger>
                             <SelectContent>
@@ -627,13 +635,10 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                         )}
                       </div>
 
-                      <div className="flex flex-col items-end min-w-[5rem]">
-                        <span className="text-sm font-medium" data-testid={`text-points-${entry.position}`}>{entry.finalPoints} pt</span>
-                        {selectedTournament && selectedTournament.pointsMultiplier !== 1 && (
-                          <span className="text-xs text-muted-foreground">
-                            ({entry.basePoints} × {selectedTournament.pointsMultiplier})
-                          </span>
-                        )}
+                      <div className="flex items-center gap-2 min-w-[4rem] text-right">
+                        <Badge variant="outline" className="font-mono">
+                          {entry.finalPoints} pt
+                        </Badge>
                       </div>
                     </div>
                   </Card>
@@ -642,47 +647,34 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
             </ScrollArea>
 
             <div className="flex justify-end gap-2 pt-4 border-t">
-              <Button
-                variant="outline"
-                onClick={() => setRankingDialogOpen(false)}
-                data-testid="button-cancel-ranking"
-              >
+              <Button variant="outline" onClick={() => setRankingDialogOpen(false)}>
                 Annulla
               </Button>
-              <Button
-                onClick={handleSaveRanking}
-                disabled={saveResultsMutation.isPending}
-                className="gap-2"
-                data-testid="button-save-ranking"
-              >
-                <Save className="h-4 w-4" />
-                {saveResultsMutation.isPending ? "Salvataggio..." : "Salva Classifica"}
+              <Button onClick={handleSaveRanking} disabled={saveResultsMutation.isPending}>
+                <Save className="h-4 w-4 mr-2" />
+                Salva Classifica
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
 
-      <TournamentDetailsDialog
-        tournament={detailsTournament}
-        open={detailsDialogOpen}
-        onOpenChange={setDetailsDialogOpen}
-        isAdmin={isAdmin}
-        onEditRanking={handleEditRankingFromDetails}
-      />
+      {detailsTournament && (
+        <TournamentDetailsDialog
+          tournament={detailsTournament}
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+          isAdmin={isAdmin}
+          onEditRanking={handleEditRankingFromDetails}
+        />
+      )}
 
       {registrationTournament && (
         <TournamentRegistrationDialog
           tournament={registrationTournament}
-          currentPlayerId={currentPlayerId}
+          currentPlayerId=""
           isOpen={registrationDialogOpen}
           onOpenChange={setRegistrationDialogOpen}
-          onSuccess={() => {
-            toast({
-              title: "Iscrizione completata",
-              description: `Ti sei iscritto a ${registrationTournament.name}`,
-            });
-          }}
         />
       )}
     </div>

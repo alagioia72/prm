@@ -58,10 +58,10 @@ Il prototipo include:
 - `/my-matches` - Storico partite
 - `/admin` - Dashboard admin
 
-### Backend (da implementare)
+### Backend (implementato)
 - **Framework**: Express.js
-- **Database**: PostgreSQL con Drizzle ORM
-- **Auth**: Replit Auth (OpenID Connect)
+- **Database**: PostgreSQL con Drizzle ORM (DatabaseStorage)
+- **Auth**: Sistema custom con bcrypt + email verification
 
 ## Tech Stack
 - Node.js 20
@@ -130,6 +130,9 @@ Il prototipo include:
 - Template HTML responsive con branding Padel Club
 
 ## Recent Changes
+- 2024-12-11: Rimosso tutto il mock data dal frontend - tutte le pagine ora usano dati reali dal database
+- 2024-12-11: Fix sicurezza: API /api/players non espone più password/verificationToken
+- 2024-12-11: Home, Tournaments, Rankings, MyMatches, Players, Profile usano useQuery per dati API
 - 2024-12-11: Implementato sistema ruoli (player/admin) con campo role nella tabella players
 - 2024-12-11: Account admin fisso preconfigurato: admin@gonettago.it / Ranking123
 - 2024-12-11: UI gestione ruoli in Dashboard Admin > Tab Giocatori
@@ -173,9 +176,8 @@ Il prototipo include:
 - 2024-12-04: Configurato tema con colori verdi (primary) per l'app sportiva
 - 2024-12-04: Aggiunta immagine hero per landing page
 
-## Next Steps (Backend)
-1. Implementare schema database (users, tournaments, matches, registrations)
-2. Configurare Replit Auth
-3. Creare API routes per CRUD operazioni
-4. Implementare logica calcolo punteggi
-5. Collegare frontend al backend
+## Next Steps
+1. Aggiungere più test e-2-e per validare flussi utente
+2. Implementare notifiche push per tornei
+3. Aggiungere statistiche avanzate giocatore
+4. Dashboard analytics per admin

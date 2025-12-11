@@ -4,74 +4,96 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { MatchResultCard, type MatchResult } from "@/components/MatchResultCard";
 import { AddMatchDialog } from "@/components/AddMatchDialog";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Match } from "@shared/schema";
 
-const mockPlayers = [
-  { id: "player-1", firstName: "Marco", lastName: "Rossi" },
-  { id: "player-2", firstName: "Luca", lastName: "Bianchi" },
-  { id: "player-3", firstName: "Andrea", lastName: "Verdi" },
-  { id: "player-4", firstName: "Giuseppe", lastName: "Ferrari" },
-  { id: "player-5", firstName: "Paolo", lastName: "Romano" },
-  { id: "player-6", firstName: "Matteo", lastName: "Greco" },
-];
-
-const playerMap = new Map(mockPlayers.map(p => [p.id, p]));
-
-function transformApiMatch(match: Match): MatchResult {
-  const getPlayer = (id: string | null) => {
-    if (!id) return null;
-    const player = playerMap.get(id);
-    if (player) return { id: parseInt(id.replace('player-', '')) || 0, firstName: player.firstName, lastName: player.lastName, profileImageUrl: null };
-    return { id: 0, firstName: id.slice(0, 5), lastName: "...", profileImageUrl: null };
-  };
-
-  const team1: { id: number; firstName: string; lastName: string; profileImageUrl: string | null }[] = [];
-  const team2: { id: number; firstName: string; lastName: string; profileImageUrl: string | null }[] = [];
-
-  const p1 = getPlayer(match.team1Player1Id);
-  if (p1) team1.push(p1);
-  const p2 = getPlayer(match.team1Player2Id);
-  if (p2) team1.push(p2);
-  const p3 = getPlayer(match.team2Player1Id);
-  if (p3) team2.push(p3);
-  const p4 = getPlayer(match.team2Player2Id);
-  if (p4) team2.push(p4);
-
-  const score1: number[] = [match.set1Team1, match.set2Team1];
-  const score2: number[] = [match.set1Team2, match.set2Team2];
-  
-  if (match.setsPlayed === 3 && match.set3Team1 !== null && match.set3Team2 !== null) {
-    score1.push(match.set3Team1);
-    score2.push(match.set3Team2);
-  }
-
-  return {
-    id: match.id,
-    date: new Date(match.playedAt),
-    type: 'single',
-    team1,
-    team2,
-    score1,
-    score2,
-    winningSide: match.winnerTeam as 1 | 2,
-    pointsAwarded: match.pointsAwarded,
-  };
+interface PlayerFromAPI {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  level: string;
+  clubId: number | null;
+  totalPoints: number;
+  emailVerified: boolean;
+  role: string;
 }
 
 export default function MyMatches() {
   const [filter, setFilter] = useState<'all' | 'tournament' | 'single'>('all');
   const { toast } = useToast();
 
-  const { data: apiMatches = [], isLoading } = useQuery<Match[]>({
+  const { data: apiMatches = [], isLoading: matchesLoading } = useQuery<Match[]>({
     queryKey: ['/api/matches'],
   });
 
+  const { data: playersData = [], isLoading: playersLoading } = useQuery<PlayerFromAPI[]>({
+    queryKey: ['/api/players'],
+  });
+
+  const playerMap = useMemo(() => {
+    return new Map(playersData.map(p => [p.id, p]));
+  }, [playersData]);
+
+  const transformApiMatch = (match: Match): MatchResult => {
+    const getPlayer = (id: string | null) => {
+      if (!id) return null;
+      const player = playerMap.get(id);
+      if (player) return { 
+        id: 1,
+        firstName: player.firstName, 
+        lastName: player.lastName, 
+        profileImageUrl: null 
+      };
+      return { id: 0, firstName: id.slice(0, 5), lastName: "...", profileImageUrl: null };
+    };
+
+    const team1: { id: number; firstName: string; lastName: string; profileImageUrl: string | null }[] = [];
+    const team2: { id: number; firstName: string; lastName: string; profileImageUrl: string | null }[] = [];
+
+    const p1 = getPlayer(match.team1Player1Id);
+    if (p1) team1.push(p1);
+    const p2 = getPlayer(match.team1Player2Id);
+    if (p2) team1.push(p2);
+    const p3 = getPlayer(match.team2Player1Id);
+    if (p3) team2.push(p3);
+    const p4 = getPlayer(match.team2Player2Id);
+    if (p4) team2.push(p4);
+
+    const score1: number[] = [match.set1Team1, match.set2Team1];
+    const score2: number[] = [match.set1Team2, match.set2Team2];
+    
+    if (match.setsPlayed === 3 && match.set3Team1 !== null && match.set3Team2 !== null) {
+      score1.push(match.set3Team1);
+      score2.push(match.set3Team2);
+    }
+
+    return {
+      id: match.id,
+      date: new Date(match.playedAt),
+      type: 'single',
+      team1,
+      team2,
+      score1,
+      score2,
+      winningSide: match.winnerTeam as 1 | 2,
+      pointsAwarded: match.pointsAwarded,
+    };
+  };
+
   const matches: MatchResult[] = useMemo(() => {
     return apiMatches.map(transformApiMatch);
-  }, [apiMatches]);
+  }, [apiMatches, playerMap]);
+
+  const playersForDialog = playersData.map(p => ({
+    id: p.id,
+    firstName: p.firstName,
+    lastName: p.lastName,
+  }));
 
   const createMatchMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -105,6 +127,8 @@ export default function MyMatches() {
   const tournamentMatches = matches.filter(m => m.type === 'tournament');
   const singleMatches = matches.filter(m => m.type === 'single');
 
+  const isLoading = matchesLoading || playersLoading;
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-4xl px-4 py-8">
@@ -119,7 +143,7 @@ export default function MyMatches() {
             </p>
           </div>
           <AddMatchDialog 
-            players={mockPlayers}
+            players={playersForDialog}
             onSubmit={handleMatchSubmit}
           />
         </div>
@@ -153,12 +177,18 @@ export default function MyMatches() {
                 />
               ))
             ) : (
-              <div className="text-center py-16 text-muted-foreground" data-testid="text-no-matches">
-                {matches.length === 0 
-                  ? "Nessuna partita registrata. Usa il pulsante 'Aggiungi Partita' per registrare la tua prima partita!"
-                  : "Nessuna partita trovata per questo filtro"
-                }
-              </div>
+              <Card>
+                <CardContent className="py-16 text-center">
+                  <Trophy className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nessuna partita</h3>
+                  <p className="text-muted-foreground" data-testid="text-no-matches">
+                    {matches.length === 0 
+                      ? "Nessuna partita registrata. Usa il pulsante 'Aggiungi Partita' per registrare la tua prima partita!"
+                      : "Nessuna partita trovata per questo filtro"
+                    }
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </div>
         </Tabs>

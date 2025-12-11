@@ -17,101 +17,6 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
 
-// todo: remove mock functionality
-const mockTournaments: Tournament[] = [
-  {
-    id: 1,
-    name: "Torneo Primavera 2024",
-    date: new Date("2024-04-15"),
-    location: "Padel Club Milano Centro",
-    level: 'intermediate',
-    gender: 'mixed',
-    maxParticipants: 16,
-    currentParticipants: 12,
-    status: 'open',
-    pointsMultiplier: 2,
-    registrationType: 'couple',
-    format: 'bracket',
-  },
-  {
-    id: 2,
-    name: "Campionato Regionale",
-    date: new Date("2024-04-22"),
-    location: "Padel Club Roma Sud",
-    level: 'advanced',
-    gender: 'male',
-    maxParticipants: 32,
-    currentParticipants: 28,
-    status: 'open',
-    pointsMultiplier: 3,
-    registrationType: 'couple',
-    format: 'bracket',
-  },
-  {
-    id: 5,
-    name: "Ladies Open Round Robin",
-    date: new Date("2024-03-08"),
-    location: "Padel Club Milano Nord",
-    level: 'intermediate',
-    gender: 'female',
-    maxParticipants: 16,
-    currentParticipants: 16,
-    status: 'in_progress',
-    pointsMultiplier: 2,
-    registrationType: 'couple',
-    format: 'round_robin',
-  },
-];
-
-const mockClubs: Club[] = [
-  {
-    id: 1,
-    name: "Padel Club Milano Centro",
-    address: "Via Montenapoleone 15",
-    city: "Milano",
-    province: "MI",
-    playersCount: 85,
-    tournamentsCount: 12,
-    isMain: true,
-  },
-  {
-    id: 2,
-    name: "Padel Club Milano Nord",
-    address: "Via Fulvio Testi 200",
-    city: "Milano",
-    province: "MI",
-    playersCount: 42,
-    tournamentsCount: 6,
-    isMain: false,
-  },
-  {
-    id: 3,
-    name: "Padel Club Roma Sud",
-    address: "Via Cristoforo Colombo 435",
-    city: "Roma",
-    province: "RM",
-    playersCount: 67,
-    tournamentsCount: 8,
-    isMain: false,
-  },
-];
-
-interface RecentPlayer {
-  id: number;
-  firstName: string;
-  lastName: string;
-  email: string;
-  joinedAt: Date;
-  level: 'beginner' | 'intermediate' | 'advanced';
-  clubName: string;
-}
-
-const mockRecentPlayers: RecentPlayer[] = [
-  { id: 1, firstName: "Marco", lastName: "Rossi", email: "marco@email.com", joinedAt: new Date("2024-03-20"), level: 'intermediate', clubName: "Padel Club Milano Centro" },
-  { id: 2, firstName: "Giulia", lastName: "Martini", email: "giulia@email.com", joinedAt: new Date("2024-03-19"), level: 'beginner', clubName: "Padel Club Roma Sud" },
-  { id: 3, firstName: "Luca", lastName: "Bianchi", email: "luca@email.com", joinedAt: new Date("2024-03-18"), level: 'advanced', clubName: "Padel Club Milano Nord" },
-];
-
 const levelLabels = {
   beginner: 'Principiante',
   intermediate: 'Intermedio',
@@ -153,6 +58,39 @@ interface Player {
   totalPoints: number;
   emailVerified: boolean;
   role: string;
+}
+
+interface ClubFromAPI {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  courtsCount: number;
+  rollingWeeks: number | null;
+  createdAt: string;
+}
+
+interface TournamentFromAPI {
+  id: number;
+  name: string;
+  clubId: number;
+  startDate: string;
+  endDate: string | null;
+  registrationType: string;
+  format: string;
+  gender: string;
+  level: string;
+  maxParticipants: number;
+  pointsMultiplier: number;
+  scoringProfileId: number | null;
+  status: string;
+  createdAt: string;
+}
+
+interface MatchFromAPI {
+  id: number;
+  clubId: number;
+  playedAt: string;
 }
 
 function PlayersManagement() {
@@ -283,7 +221,60 @@ export default function AdminDashboard() {
   const [isScoringDirty, setIsScoringDirty] = useState(false);
   const { toast } = useToast();
 
-  const totalPlayers = mockClubs.reduce((sum, club) => sum + club.playersCount, 0);
+  const { data: clubsData = [], isLoading: clubsLoading } = useQuery<ClubFromAPI[]>({
+    queryKey: ['/api/clubs'],
+  });
+
+  const { data: tournamentsData = [], isLoading: tournamentsLoading } = useQuery<TournamentFromAPI[]>({
+    queryKey: ['/api/tournaments'],
+  });
+
+  const { data: playersData = [] } = useQuery<Player[]>({
+    queryKey: ['/api/players'],
+  });
+
+  const { data: matchesData = [] } = useQuery<MatchFromAPI[]>({
+    queryKey: ['/api/matches'],
+  });
+
+  const clubs: Club[] = clubsData.map(club => ({
+    id: club.id,
+    name: club.name,
+    address: club.address,
+    city: club.city,
+    province: "",
+    playersCount: playersData.filter(p => p.clubId === club.id).length,
+    tournamentsCount: tournamentsData.filter(t => t.clubId === club.id).length,
+    isMain: club.id === 1,
+  }));
+
+  const mapStatus = (status: string): 'open' | 'in_progress' | 'completed' => {
+    if (status === 'upcoming' || status === 'open') return 'open';
+    if (status === 'in_progress') return 'in_progress';
+    return 'completed';
+  };
+
+  const tournaments: Tournament[] = tournamentsData.map(t => {
+    const club = clubsData.find(c => c.id === t.clubId);
+    return {
+      id: t.id,
+      name: t.name,
+      date: new Date(t.startDate),
+      location: club?.name || "Sede sconosciuta",
+      level: t.level as 'beginner' | 'intermediate' | 'advanced',
+      gender: t.gender as 'male' | 'female' | 'mixed',
+      maxParticipants: t.maxParticipants,
+      currentParticipants: 0,
+      status: mapStatus(t.status),
+      pointsMultiplier: t.pointsMultiplier,
+      registrationType: t.registrationType as 'couple' | 'individual',
+      format: t.format as 'bracket' | 'round_robin',
+    };
+  });
+
+  const totalPlayers = playersData.length;
+  const activeTournaments = tournamentsData.filter(t => t.status === 'open' || t.status === 'in_progress').length;
+  const totalMatches = matchesData.length;
 
   return (
     <div className="min-h-screen bg-background">
@@ -303,7 +294,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
           <StatsCard 
             title="Sedi"
-            value={mockClubs.length}
+            value={clubs.length}
             icon={Building2}
             subtitle="Club nella catena"
           />
@@ -311,23 +302,21 @@ export default function AdminDashboard() {
             title="Giocatori Totali"
             value={totalPlayers}
             icon={Users}
-            trend={{ value: 12, label: "questo mese", positive: true }}
           />
           <StatsCard 
             title="Tornei Attivi"
-            value={4}
+            value={activeTournaments}
             icon={Calendar}
-            subtitle="2 iscrizioni aperte"
+            subtitle={`${tournamentsData.filter(t => t.status === 'open').length} iscrizioni aperte`}
           />
           <StatsCard 
             title="Partite Totali"
-            value={342}
+            value={totalMatches}
             icon={Target}
-            trend={{ value: 8, label: "questa settimana", positive: true }}
           />
           <StatsCard 
-            title="Punti Assegnati"
-            value="12.5K"
+            title="Tornei Totali"
+            value={tournamentsData.length}
             icon={Trophy}
           />
         </div>
@@ -373,24 +362,40 @@ export default function AdminDashboard() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockClubs
-                .filter(club => 
-                  !clubSearch || 
-                  club.name.toLowerCase().includes(clubSearch.toLowerCase()) ||
-                  club.city.toLowerCase().includes(clubSearch.toLowerCase())
-                )
-                .map((club) => (
-                  <ClubCard
-                    key={club.id}
-                    club={club}
-                    isAdmin
-                    onEdit={(id) => console.log('Edit club:', id)}
-                    onDelete={(id) => console.log('Delete club:', id)}
-                    onViewDetails={(id) => console.log('View club:', id)}
-                  />
-                ))}
-            </div>
+            {clubsLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Caricamento sedi...
+              </div>
+            ) : clubs.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Building2 className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nessuna sede</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Non ci sono ancora sedi registrate. Crea la prima sede per iniziare.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {clubs
+                  .filter(club => 
+                    !clubSearch || 
+                    club.name.toLowerCase().includes(clubSearch.toLowerCase()) ||
+                    club.city.toLowerCase().includes(clubSearch.toLowerCase())
+                  )
+                  .map((club) => (
+                    <ClubCard
+                      key={club.id}
+                      club={club}
+                      isAdmin
+                      onEdit={(id) => console.log('Edit club:', id)}
+                      onDelete={(id) => console.log('Delete club:', id)}
+                      onViewDetails={(id) => console.log('View club:', id)}
+                    />
+                  ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="tournaments" className="space-y-6">
@@ -410,17 +415,33 @@ export default function AdminDashboard() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {mockTournaments
-                .filter(t => !search || t.name.toLowerCase().includes(search.toLowerCase()))
-                .map((tournament) => (
-                  <TournamentCard
-                    key={tournament.id}
-                    tournament={tournament}
-                    onViewDetails={(id) => console.log('Manage tournament:', id)}
-                  />
-                ))}
-            </div>
+            {tournamentsLoading ? (
+              <div className="text-center py-8 text-muted-foreground">
+                Caricamento tornei...
+              </div>
+            ) : tournaments.length === 0 ? (
+              <Card>
+                <CardContent className="py-12 text-center">
+                  <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-medium mb-2">Nessun torneo</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Non ci sono ancora tornei registrati. Crea il primo torneo per iniziare.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {tournaments
+                  .filter(t => !search || t.name.toLowerCase().includes(search.toLowerCase()))
+                  .map((tournament) => (
+                    <TournamentCard
+                      key={tournament.id}
+                      tournament={tournament}
+                      onViewDetails={(id) => console.log('Manage tournament:', id)}
+                    />
+                  ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="players" className="space-y-6">
@@ -607,58 +628,49 @@ function SettingsPanel() {
   }, [clubs]);
 
   const updateChainSettingMutation = useMutation({
-    mutationFn: async (data: { key: string; value: string }) => {
-      return apiRequest('PUT', `/api/chain-settings/${data.key}`, { value: data.value });
+    mutationFn: async ({ key, value }: { key: string; value: string }) => {
+      const response = await apiRequest('POST', '/api/chain-settings', { key, value });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/chain-settings'] });
       toast({
         title: "Impostazione salvata",
-        description: "L'impostazione della catena è stata aggiornata",
+        description: "Il periodo rolling della catena è stato aggiornato",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare l'impostazione",
+        variant: "destructive",
       });
     },
   });
 
-  const updateClubMutation = useMutation({
-    mutationFn: async (data: { id: number; rollingWeeks: number | null }) => {
-      return apiRequest('PATCH', `/api/clubs/${data.id}`, { rollingWeeks: data.rollingWeeks });
+  const updateClubSettingMutation = useMutation({
+    mutationFn: async ({ clubId, rollingWeeks }: { clubId: number; rollingWeeks: number | null }) => {
+      const response = await apiRequest('PATCH', `/api/clubs/${clubId}`, { rollingWeeks });
+      return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/clubs'] });
       toast({
-        title: "Club aggiornato",
-        description: "Le impostazioni del club sono state aggiornate",
+        title: "Impostazione salvata",
+        description: "Il periodo rolling del club è stato aggiornato",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile salvare l'impostazione",
+        variant: "destructive",
       });
     },
   });
 
-  const handleSaveChainRollingWeeks = () => {
-    updateChainSettingMutation.mutate({
-      key: 'rollingWeeks',
-      value: chainRollingWeeks || "0",
-    });
-  };
-
-  const handleSaveClubRollingWeeks = (clubId: number) => {
-    const weeks = clubSettings[clubId];
-    updateClubMutation.mutate({
-      id: clubId,
-      rollingWeeks: weeks ? parseInt(weeks) : null,
-    });
-  };
-
   const rollingWeeksOptions = [
-    { value: "", label: "Usa default catena" },
-    { value: "4", label: "4 settimane" },
-    { value: "8", label: "8 settimane" },
-    { value: "12", label: "12 settimane" },
-    { value: "16", label: "16 settimane" },
-    { value: "24", label: "24 settimane" },
-    { value: "52", label: "52 settimane (1 anno)" },
-  ];
-
-  const chainRollingWeeksOptions = [
-    { value: "0", label: "Nessun limite" },
+    { value: "", label: "Nessun limite" },
     { value: "4", label: "4 settimane" },
     { value: "8", label: "8 settimane" },
     { value: "12", label: "12 settimane" },
@@ -673,88 +685,78 @@ function SettingsPanel() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5" />
-            Periodo Rolling Punti - Catena
+            Periodo Rolling Classifiche
           </CardTitle>
           <CardDescription>
-            Imposta il numero di settimane da considerare per il calcolo delle classifiche a livello di catena.
-            Questo valore è il default per tutti i club che non hanno un'impostazione specifica.
+            Configura il periodo di tempo su cui calcolare i punti per le classifiche
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
-            <div className="space-y-2 w-full sm:w-64">
-              <Label htmlFor="chain-rolling-weeks">Periodo Rolling (settimane)</Label>
-              <Select
-                value={chainRollingWeeks}
-                onValueChange={setChainRollingWeeks}
-              >
-                <SelectTrigger id="chain-rolling-weeks" data-testid="select-chain-rolling-weeks">
-                  <SelectValue placeholder="Seleziona periodo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {chainRollingWeeksOptions.map(opt => (
-                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button 
-              onClick={handleSaveChainRollingWeeks}
-              disabled={updateChainSettingMutation.isPending}
-              data-testid="button-save-chain-rolling-weeks"
-            >
-              <Save className="h-4 w-4 mr-2" />
-              Salva
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Periodo Rolling Punti - Per Club
-          </CardTitle>
-          <CardDescription>
-            Imposta un periodo rolling specifico per ogni club. Se non impostato, verrà utilizzato il valore della catena.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           <div className="space-y-4">
-            {clubs?.map((club) => (
-              <div 
-                key={club.id} 
-                className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-3 border-b last:border-0"
-              >
-                <div className="flex-1">
-                  <p className="font-medium">{club.name}</p>
-                </div>
-                <div className="flex items-center gap-2 w-full sm:w-auto">
-                  <Select
-                    value={clubSettings[club.id] || ""}
-                    onValueChange={(value) => setClubSettings(prev => ({ ...prev, [club.id]: value }))}
-                  >
-                    <SelectTrigger className="w-48" data-testid={`select-club-rolling-weeks-${club.id}`}>
-                      <SelectValue placeholder="Usa default catena" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {rollingWeeksOptions.map(opt => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button 
-                    size="sm"
-                    onClick={() => handleSaveClubRollingWeeks(club.id)}
-                    disabled={updateClubMutation.isPending}
-                    data-testid={`button-save-club-rolling-weeks-${club.id}`}
-                  >
-                    <Save className="h-4 w-4" />
-                  </Button>
+            <div>
+              <Label className="text-base font-medium">Impostazione Catena (Default)</Label>
+              <p className="text-sm text-muted-foreground mb-2">
+                Questa impostazione si applica a tutti i club che non hanno una configurazione specifica
+              </p>
+              <div className="flex gap-2 items-center">
+                <Select
+                  value={chainRollingWeeks}
+                  onValueChange={(value) => {
+                    setChainRollingWeeks(value);
+                    updateChainSettingMutation.mutate({ key: 'rollingWeeks', value });
+                  }}
+                >
+                  <SelectTrigger className="w-48" data-testid="select-chain-rolling-weeks">
+                    <SelectValue placeholder="Seleziona periodo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rollingWeeksOptions.map(opt => (
+                      <SelectItem key={opt.value || "none"} value={opt.value || "none"}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {clubs && clubs.length > 0 && (
+              <div className="border-t pt-4">
+                <Label className="text-base font-medium">Impostazioni per Club</Label>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Sovrascrivi il periodo rolling per club specifici
+                </p>
+                <div className="space-y-3">
+                  {clubs.map(club => (
+                    <div key={club.id} className="flex items-center justify-between py-2 px-3 border rounded-md">
+                      <span className="font-medium">{club.name}</span>
+                      <Select
+                        value={clubSettings[club.id] || ""}
+                        onValueChange={(value) => {
+                          setClubSettings(prev => ({ ...prev, [club.id]: value }));
+                          updateClubSettingMutation.mutate({ 
+                            clubId: club.id, 
+                            rollingWeeks: value ? parseInt(value) : null 
+                          });
+                        }}
+                      >
+                        <SelectTrigger className="w-48" data-testid={`select-club-rolling-weeks-${club.id}`}>
+                          <SelectValue placeholder="Usa default catena" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="default">Usa default catena</SelectItem>
+                          {rollingWeeksOptions.filter(o => o.value).map(opt => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
