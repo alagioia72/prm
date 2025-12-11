@@ -12,6 +12,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // Initialize default data (admin account, scoring profile)
+  await storage.initializeDefaults();
+
   app.get("/api/clubs", async (req, res) => {
     const clubs = await storage.getClubs();
     res.json(clubs);
