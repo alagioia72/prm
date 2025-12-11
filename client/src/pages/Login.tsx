@@ -48,8 +48,10 @@ export default function Login({ onLogin }: LoginProps) {
         title: "Benvenuto!",
         description: data.message,
       });
-      if (onLogin && data.player) {
-        onLogin(data.player);
+      if (onLogin) {
+        // Extract user data without the message field
+        const { message, ...userData } = data;
+        onLogin(userData);
       }
       navigate("/");
     },
