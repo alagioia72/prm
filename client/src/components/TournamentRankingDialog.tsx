@@ -42,22 +42,7 @@ interface RankingEntry {
   player2Id?: string;
 }
 
-const mockPlayers: Player[] = [
-  { id: "player-1", firstName: "Marco", lastName: "Rossi" },
-  { id: "player-2", firstName: "Luca", lastName: "Bianchi" },
-  { id: "player-3", firstName: "Andrea", lastName: "Verdi" },
-  { id: "player-4", firstName: "Giuseppe", lastName: "Ferrari" },
-  { id: "player-5", firstName: "Paolo", lastName: "Romano" },
-  { id: "player-6", firstName: "Matteo", lastName: "Greco" },
-  { id: "player-7", firstName: "Simone", lastName: "Marino" },
-  { id: "player-8", firstName: "Roberto", lastName: "Neri" },
-  { id: "player-9", firstName: "Carlo", lastName: "Gialli" },
-  { id: "player-10", firstName: "Antonio", lastName: "Blu" },
-  { id: "player-11", firstName: "Stefano", lastName: "Rosa" },
-  { id: "player-12", firstName: "Fabio", lastName: "Viola" },
-];
-
-export function TournamentRankingDialog({ tournament, players = mockPlayers, onSuccess }: TournamentRankingDialogProps) {
+export function TournamentRankingDialog({ tournament, players, onSuccess }: TournamentRankingDialogProps) {
   const [open, setOpen] = useState(false);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [positionsCount, setPositionsCount] = useState(8);

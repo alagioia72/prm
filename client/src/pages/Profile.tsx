@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { User, Trophy, Calendar, Target, TrendingUp, Edit, Save, Building2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -14,6 +14,10 @@ import {
 } from "@/components/ui/select";
 import { StatsCard } from "@/components/StatsCard";
 import { MatchResultCard, type MatchResult } from "@/components/MatchResultCard";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import type { Match } from "@shared/schema";
 
 interface ProfileProps {
   user: {
@@ -25,56 +29,130 @@ interface ProfileProps {
   };
 }
 
-// todo: remove mock functionality
-const mockClub = {
-  id: 1,
-  name: "Padel Club Milano Centro",
-  city: "Milano",
-  address: "Via Montenapoleone 15",
-};
+interface PlayerFromAPI {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  level: string;
+  clubId: number | null;
+  totalPoints: number;
+  emailVerified: boolean;
+  role: string;
+}
 
-const mockMatches: MatchResult[] = [
-  {
-    id: 1,
-    date: new Date("2024-03-20"),
-    type: 'tournament',
-    tournamentName: 'Torneo Inverno',
-    team1: [
-      { id: 1, firstName: "Marco", lastName: "Rossi", profileImageUrl: null },
-      { id: 2, firstName: "Luca", lastName: "Bianchi", profileImageUrl: null },
-    ],
-    team2: [
-      { id: 3, firstName: "Andrea", lastName: "Verdi", profileImageUrl: null },
-      { id: 4, firstName: "Giuseppe", lastName: "Ferrari", profileImageUrl: null },
-    ],
-    score1: [6, 7],
-    score2: [4, 5],
-    winningSide: 1,
-    pointsAwarded: 50,
-  },
-  {
-    id: 2,
-    date: new Date("2024-03-15"),
-    type: 'single',
-    team1: [
-      { id: 1, firstName: "Marco", lastName: "Rossi", profileImageUrl: null },
-      { id: 5, firstName: "Paolo", lastName: "Romano", profileImageUrl: null },
-    ],
-    team2: [
-      { id: 6, firstName: "Matteo", lastName: "Greco", profileImageUrl: null },
-      { id: 7, firstName: "Simone", lastName: "Marino", profileImageUrl: null },
-    ],
-    score1: [4, 6, 4],
-    score2: [6, 3, 6],
-    winningSide: 2,
-    pointsAwarded: 25,
-  },
-];
+interface ClubFromAPI {
+  id: number;
+  name: string;
+  address: string;
+  city: string;
+  courtsCount: number;
+  rollingWeeks: number | null;
+  createdAt: string;
+}
 
 export default function Profile({ user }: ProfileProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [gender, setGender] = useState<'male' | 'female'>('male');
   const [level, setLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('intermediate');
+  const { toast } = useToast();
+
+  const { data: playerData } = useQuery<PlayerFromAPI>({
+    queryKey: ['/api/players', user.id],
+    enabled: !!user.id,
+  });
+
+  const { data: clubsData = [] } = useQuery<ClubFromAPI[]>({
+    queryKey: ['/api/clubs'],
+  });
+
+  const { data: matchesData = [] } = useQuery<Match[]>({
+    queryKey: ['/api/matches'],
+  });
+
+  const { data: playersData = [] } = useQuery<PlayerFromAPI[]>({
+    queryKey: ['/api/players'],
+  });
+
+  const playerClub = useMemo(() => {
+    if (!playerData?.clubId) return null;
+    return clubsData.find(c => c.id === playerData.clubId);
+  }, [playerData, clubsData]);
+
+  const playerMap = useMemo(() => {
+    return new Map(playersData.map(p => [p.id, p]));
+  }, [playersData]);
+
+  const recentMatches: MatchResult[] = useMemo(() => {
+    return matchesData.slice(0, 3).map(match => {
+      const getPlayer = (id: string | null) => {
+        if (!id) return null;
+        const player = playerMap.get(id);
+        if (player) return { 
+          id: 1,
+          firstName: player.firstName, 
+          lastName: player.lastName, 
+          profileImageUrl: null 
+        };
+        return { id: 0, firstName: id.slice(0, 5), lastName: "...", profileImageUrl: null };
+      };
+
+      const team1: { id: number; firstName: string; lastName: string; profileImageUrl: string | null }[] = [];
+      const team2: { id: number; firstName: string; lastName: string; profileImageUrl: string | null }[] = [];
+
+      const p1 = getPlayer(match.team1Player1Id);
+      if (p1) team1.push(p1);
+      const p2 = getPlayer(match.team1Player2Id);
+      if (p2) team1.push(p2);
+      const p3 = getPlayer(match.team2Player1Id);
+      if (p3) team2.push(p3);
+      const p4 = getPlayer(match.team2Player2Id);
+      if (p4) team2.push(p4);
+
+      const score1: number[] = [match.set1Team1, match.set2Team1];
+      const score2: number[] = [match.set1Team2, match.set2Team2];
+      
+      if (match.setsPlayed === 3 && match.set3Team1 !== null && match.set3Team2 !== null) {
+        score1.push(match.set3Team1);
+        score2.push(match.set3Team2);
+      }
+
+      return {
+        id: match.id,
+        date: new Date(match.playedAt),
+        type: 'single' as const,
+        team1,
+        team2,
+        score1,
+        score2,
+        winningSide: match.winnerTeam as 1 | 2,
+        pointsAwarded: match.pointsAwarded,
+      };
+    });
+  }, [matchesData, playerMap]);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: { gender: string; level: string }) => {
+      return apiRequest('PATCH', `/api/players/${user.id}`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/players', user.id] });
+      queryClient.invalidateQueries({ queryKey: ['/api/players'] });
+      toast({
+        title: "Profilo aggiornato",
+        description: "Le modifiche sono state salvate",
+      });
+      setIsEditing(false);
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il profilo",
+        variant: "destructive",
+      });
+    },
+  });
 
   const getInitials = () => {
     if (user.firstName && user.lastName) {
@@ -84,9 +162,12 @@ export default function Profile({ user }: ProfileProps) {
   };
 
   const handleSave = () => {
-    console.log('Saving profile:', { gender, level });
-    setIsEditing(false);
+    updateProfileMutation.mutate({ gender, level });
   };
+
+  const displayGender = playerData?.gender || gender;
+  const displayLevel = playerData?.level || level;
+  const totalPoints = playerData?.totalPoints || 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -112,9 +193,9 @@ export default function Profile({ user }: ProfileProps) {
                   </h2>
                   <p className="text-muted-foreground text-sm">{user.email}</p>
                   <div className="flex gap-2 mt-3">
-                    <Badge variant="outline">{gender === 'male' ? 'Maschile' : 'Femminile'}</Badge>
+                    <Badge variant="outline">{displayGender === 'male' ? 'Maschile' : 'Femminile'}</Badge>
                     <Badge variant="outline">
-                      {level === 'beginner' ? 'Principiante' : level === 'intermediate' ? 'Intermedio' : 'Avanzato'}
+                      {displayLevel === 'beginner' ? 'Principiante' : displayLevel === 'intermediate' ? 'Intermedio' : 'Avanzato'}
                     </Badge>
                   </div>
                 </div>
@@ -129,11 +210,15 @@ export default function Profile({ user }: ProfileProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
-                  <p className="font-medium" data-testid="text-club-name">{mockClub.name}</p>
-                  <p className="text-sm text-muted-foreground">{mockClub.address}</p>
-                  <p className="text-sm text-muted-foreground">{mockClub.city}</p>
-                </div>
+                {playerClub ? (
+                  <div className="space-y-2">
+                    <p className="font-medium" data-testid="text-club-name">{playerClub.name}</p>
+                    <p className="text-sm text-muted-foreground">{playerClub.address}</p>
+                    <p className="text-sm text-muted-foreground">{playerClub.city}</p>
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">Nessuna sede assegnata</p>
+                )}
                 <p className="text-xs text-muted-foreground mt-4">
                   Puoi partecipare ai tornei di tutte le sedi della catena
                 </p>
@@ -147,6 +232,7 @@ export default function Profile({ user }: ProfileProps) {
                   variant="ghost" 
                   size="icon"
                   onClick={() => isEditing ? handleSave() : setIsEditing(true)}
+                  disabled={updateProfileMutation.isPending}
                   data-testid={isEditing ? "button-save-profile" : "button-edit-profile"}
                 >
                   {isEditing ? <Save className="h-4 w-4" /> : <Edit className="h-4 w-4" />}
@@ -186,22 +272,22 @@ export default function Profile({ user }: ProfileProps) {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatsCard 
                 title="Posizione"
-                value="#12"
+                value="-"
                 icon={Trophy}
               />
               <StatsCard 
                 title="Punti"
-                value={850}
+                value={totalPoints}
                 icon={Target}
               />
               <StatsCard 
                 title="Partite"
-                value={24}
+                value={matchesData.length}
                 icon={Calendar}
               />
               <StatsCard 
                 title="Win Rate"
-                value="75%"
+                value="-"
                 icon={TrendingUp}
               />
             </div>
@@ -211,13 +297,19 @@ export default function Profile({ user }: ProfileProps) {
                 <CardTitle>Ultime Partite</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {mockMatches.map((match) => (
-                  <MatchResultCard 
-                    key={match.id} 
-                    match={match}
-                    highlightPlayerId={1}
-                  />
-                ))}
+                {recentMatches.length > 0 ? (
+                  recentMatches.map((match) => (
+                    <MatchResultCard 
+                      key={match.id} 
+                      match={match}
+                      highlightPlayerId={1}
+                    />
+                  ))
+                ) : (
+                  <p className="text-center text-muted-foreground py-8">
+                    Nessuna partita registrata
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>

@@ -12,6 +12,9 @@ export async function registerRoutes(
   app: Express
 ): Promise<Server> {
 
+  // Initialize default data (admin account, scoring profile)
+  await storage.initializeDefaults();
+
   app.get("/api/clubs", async (req, res) => {
     const clubs = await storage.getClubs();
     res.json(clubs);
@@ -476,7 +479,8 @@ export async function registerRoutes(
 
   app.get("/api/players", async (req, res) => {
     const players = await storage.getPlayers();
-    res.json(players);
+    const safePlayers = players.map(({ password, verificationToken, ...safe }) => safe);
+    res.json(safePlayers);
   });
 
   app.get("/api/players/:id", async (req, res) => {
@@ -486,6 +490,41 @@ export async function registerRoutes(
     }
     const { password, verificationToken, ...safePlayer } = player;
     res.json(safePlayer);
+  });
+
+  app.patch("/api/players/:id/role", async (req, res) => {
+    try {
+      const { role, adminId } = req.body;
+      
+      // Verify adminId is provided and the caller is actually an admin
+      if (!adminId) {
+        return res.status(401).json({ error: "Autenticazione richiesta" });
+      }
+      
+      const adminUser = await storage.getPlayer(adminId);
+      if (!adminUser || adminUser.role !== "admin") {
+        return res.status(403).json({ error: "Solo gli amministratori possono modificare i ruoli" });
+      }
+      
+      if (!role || !["player", "admin"].includes(role)) {
+        return res.status(400).json({ error: "Ruolo non valido. Usa 'player' o 'admin'" });
+      }
+      
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Giocatore non trovato" });
+      }
+      
+      const updated = await storage.updatePlayer(req.params.id, { role } as any);
+      if (!updated) {
+        return res.status(500).json({ error: "Errore durante l'aggiornamento" });
+      }
+      
+      const { password, verificationToken, ...safePlayer } = updated;
+      res.json(safePlayer);
+    } catch (error) {
+      res.status(500).json({ error: "Errore interno del server" });
+    }
   });
 
   app.post("/api/auth/register", async (req, res) => {

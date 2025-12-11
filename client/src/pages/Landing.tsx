@@ -4,13 +4,14 @@ import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Link } from "wouter";
+import logoUrl from "@assets/logo_1765462473044.jpg";
 
 const upcomingTournaments: Tournament[] = [
   {
     id: 1,
     name: "Torneo Primavera 2024",
     date: new Date("2024-04-15"),
-    location: "Padel Club Milano",
+    location: "GonettaGO Milano",
     level: 'intermediate',
     gender: 'mixed',
     maxParticipants: 16,
@@ -158,8 +159,8 @@ export default function Landing({ isAuthenticated = false }: LandingProps) {
       <footer className="border-t py-8 px-4">
         <div className="mx-auto max-w-7xl flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-2">
-            <Trophy className="h-6 w-6 text-primary" />
-            <span className="font-bold">Padel Club</span>
+            <img src={logoUrl} alt="GonettaGO" className="h-8 w-auto" />
+            <span className="font-bold">GonettaGO</span>
           </div>
           <p className="text-sm text-muted-foreground">
             Gestione tornei e classifiche di padel

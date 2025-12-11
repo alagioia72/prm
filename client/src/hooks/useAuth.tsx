@@ -23,7 +23,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = "padel_club_user";
+const AUTH_STORAGE_KEY = "gonettago_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (userData: User) => {
     const userWithRole = {
       ...userData,
-      role: userData.email === "admin@padelclub.it" ? "admin" as const : "player" as const,
+      role: userData.role ?? "player",
     };
     setUser(userWithRole);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userWithRole));

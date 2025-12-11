@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Menu, X, Trophy, Users, Calendar, User, Shield, LogOut } from "lucide-react";
+import logoUrl from "@assets/logo_1765462473044.jpg";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "./ThemeToggle";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -47,8 +48,8 @@ export function Navbar({ user, isAuthenticated }: NavbarProps) {
       <div className="mx-auto max-w-7xl px-4">
         <div className="flex h-16 items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-2">
-            <Trophy className="h-8 w-8 text-primary" />
-            <span className="text-xl font-bold" data-testid="text-logo">Padel Club</span>
+            <img src={logoUrl} alt="GonettaGO" className="h-10 w-auto" />
+            <span className="text-xl font-bold" data-testid="text-logo">GonettaGO</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-1">

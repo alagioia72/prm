@@ -1,21 +1,6 @@
-import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, serial, integer, boolean, real, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, real, timestamp } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
-
-export const users = pgTable("users", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  username: text("username").notNull().unique(),
-  password: text("password").notNull(),
-});
-
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
-});
-
-export type InsertUser = z.infer<typeof insertUserSchema>;
-export type User = typeof users.$inferSelect;
 
 export const clubs = pgTable("clubs", {
   id: serial("id").primaryKey(),
@@ -212,6 +197,7 @@ export const players = pgTable("players", {
   totalPoints: integer("total_points").notNull().default(0),
   emailVerified: boolean("email_verified").notNull().default(false),
   verificationToken: text("verification_token"),
+  role: text("role").notNull().default("player"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -219,6 +205,7 @@ export const insertPlayerSchema = createInsertSchema(players).omit({
   createdAt: true,
   emailVerified: true,
   verificationToken: true,
+  role: true,
 });
 
 export const registerPlayerSchema = z.object({
