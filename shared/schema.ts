@@ -197,6 +197,7 @@ export const players = pgTable("players", {
   totalPoints: integer("total_points").notNull().default(0),
   emailVerified: boolean("email_verified").notNull().default(false),
   verificationToken: text("verification_token"),
+  role: text("role").notNull().default("player"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -204,6 +205,7 @@ export const insertPlayerSchema = createInsertSchema(players).omit({
   createdAt: true,
   emailVerified: true,
   verificationToken: true,
+  role: true,
 });
 
 export const registerPlayerSchema = z.object({

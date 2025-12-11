@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = (userData: User) => {
     const userWithRole = {
       ...userData,
-      role: userData.email === "admin@gonettago.it" ? "admin" as const : "player" as const,
+      role: userData.role ?? "player",
     };
     setUser(userWithRole);
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(userWithRole));

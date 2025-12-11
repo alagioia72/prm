@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useAuth } from "@/hooks/useAuth";
 
 // todo: remove mock functionality
 const mockTournaments: Tournament[] = [
@@ -140,6 +141,139 @@ const defaultScoringEntries: ScoringEntry[] = [
   { position: 15, points: 12 },
   { position: 16, points: 11 },
 ];
+
+interface Player {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  gender: string;
+  level: string;
+  clubId: number | null;
+  totalPoints: number;
+  emailVerified: boolean;
+  role: string;
+}
+
+function PlayersManagement() {
+  const { toast } = useToast();
+  const [playerSearch, setPlayerSearch] = useState("");
+  const { user } = useAuth();
+  
+  const { data: players = [], isLoading } = useQuery<Player[]>({
+    queryKey: ['/api/players'],
+  });
+  
+  const updateRoleMutation = useMutation({
+    mutationFn: async ({ playerId, role }: { playerId: string; role: string }) => {
+      const response = await apiRequest('PATCH', `/api/players/${playerId}/role`, { role, adminId: user?.id });
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/players'] });
+      toast({
+        title: "Ruolo aggiornato",
+        description: "Il ruolo dell'utente è stato modificato con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il ruolo",
+        variant: "destructive",
+      });
+    },
+  });
+  
+  const filteredPlayers = players.filter(player => 
+    !playerSearch || 
+    player.firstName.toLowerCase().includes(playerSearch.toLowerCase()) ||
+    player.lastName.toLowerCase().includes(playerSearch.toLowerCase()) ||
+    player.email.toLowerCase().includes(playerSearch.toLowerCase())
+  );
+  
+  const handleRoleChange = (playerId: string, newRole: string) => {
+    updateRoleMutation.mutate({ playerId, role: newRole });
+  };
+  
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="py-8 text-center text-muted-foreground">
+          Caricamento giocatori...
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          Gestione Giocatori e Ruoli
+        </CardTitle>
+        <CardDescription>
+          Visualizza tutti i giocatori e modifica i loro ruoli (player/admin)
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Cerca per nome, cognome o email..."
+            value={playerSearch}
+            onChange={(e) => setPlayerSearch(e.target.value)}
+            className="pl-10"
+            data-testid="input-search-players"
+          />
+        </div>
+        
+        <div className="space-y-2">
+          {filteredPlayers.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">Nessun giocatore trovato</p>
+          ) : (
+            filteredPlayers.map((player) => (
+              <div 
+                key={player.id} 
+                className="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-4 border rounded-md gap-3"
+                data-testid={`row-player-${player.id}`}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium">{player.firstName} {player.lastName}</p>
+                    <Badge variant="outline" className="text-xs">
+                      {levelLabels[player.level as keyof typeof levelLabels] || player.level}
+                    </Badge>
+                    {player.role === "admin" && (
+                      <Badge variant="default" className="text-xs">Admin</Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">{player.email}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={player.role}
+                    onValueChange={(value) => handleRoleChange(player.id, value)}
+                    disabled={updateRoleMutation.isPending}
+                  >
+                    <SelectTrigger className="w-32" data-testid={`select-role-${player.id}`}>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="player">Player</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AdminDashboard() {
   const [search, setSearch] = useState("");
@@ -290,34 +424,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="players" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Nuovi Giocatori</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {mockRecentPlayers.map((player) => (
-                    <div 
-                      key={player.id} 
-                      className="flex items-center justify-between py-3 border-b last:border-0"
-                      data-testid={`row-admin-player-${player.id}`}
-                    >
-                      <div>
-                        <p className="font-medium">{player.firstName} {player.lastName}</p>
-                        <p className="text-sm text-muted-foreground">{player.email}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{player.clubName}</p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{levelLabels[player.level]}</Badge>
-                        <Button variant="outline" size="sm" data-testid={`button-view-player-${player.id}`}>
-                          Vedi
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <PlayersManagement />
           </TabsContent>
 
           <TabsContent value="scoring" className="space-y-6">

@@ -1,10 +1,10 @@
-# Padel Club - Gestione Tornei e Classifiche
+# GonettaGO - Gestione Tornei e Classifiche Padel
 
 ## Overview
 Web application per la gestione di tornei e partite di padel con sistema di classifiche divise per genere (maschile/femminile) e livello (principianti, intermedi, avanzati).
 
 ## Current State
-**Fase**: Prototipo Frontend completato (in attesa di feedback utente)
+**Fase**: MVP funzionante con autenticazione e gestione ruoli
 
 Il prototipo include:
 - Landing page con hero section
@@ -73,8 +73,16 @@ Il prototipo include:
 - Replit Auth
 
 ## User Roles
-1. **Giocatore**: Registrazione, iscrizione tornei, inserimento partite singole, consultazione classifiche
-2. **Amministratore**: Tutte le funzionalità giocatore + creazione tornei, gestione utenti
+1. **Giocatore (player)**: Registrazione, iscrizione tornei, inserimento partite singole, consultazione classifiche
+2. **Amministratore (admin)**: Tutte le funzionalità giocatore + creazione tornei, gestione utenti, modifica ruoli
+
+### Sistema Ruoli
+- Campo `role` nella tabella `players` con valori: "player" (default) o "admin"
+- I nuovi utenti registrati sono sempre "player"
+- Solo gli admin possono modificare i ruoli degli altri utenti
+- **Admin di default**: admin@gonettago.it / Ranking123 (account fisso preconfigurato)
+- API: PATCH /api/players/:id/role per cambiare ruolo
+- UI: Dashboard Admin > Tab Giocatori per gestire i ruoli
 
 ## Scoring System
 - **Profili punteggio configurabili**: Admin può definire punti per le prime 16 posizioni
@@ -122,6 +130,12 @@ Il prototipo include:
 - Template HTML responsive con branding Padel Club
 
 ## Recent Changes
+- 2024-12-11: Implementato sistema ruoli (player/admin) con campo role nella tabella players
+- 2024-12-11: Account admin fisso preconfigurato: admin@gonettago.it / Ranking123
+- 2024-12-11: UI gestione ruoli in Dashboard Admin > Tab Giocatori
+- 2024-12-11: API PATCH /api/players/:id/role per modifica ruoli
+- 2024-12-11: Rimossa tabella users inutilizzata dallo schema
+- 2024-12-11: Rebranding da "Padel Club" a "GonettaGO" con nuovo logo
 - 2024-12-11: Implementato sistema periodo rolling per calcolo classifiche (configurabile per catena e per club)
 - 2024-12-11: Tab "Impostazioni" in admin dashboard per configurare rolling weeks
 - 2024-12-11: API /api/rankings con supporto per filtro periodo rolling
