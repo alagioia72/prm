@@ -39,6 +39,64 @@ export async function registerRoutes(
     }
   });
 
+  app.patch("/api/clubs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const updateSchema = z.object({
+        name: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        courtsCount: z.number().optional(),
+        rollingWeeks: z.number().nullable().optional(),
+      });
+      const updates = updateSchema.parse(req.body);
+      const club = await storage.updateClub(id, updates);
+      if (!club) {
+        return res.status(404).json({ error: "Club not found" });
+      }
+      res.json(club);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.get("/api/chain-settings", async (req, res) => {
+    const settings = await storage.getChainSettings();
+    res.json(settings);
+  });
+
+  app.get("/api/chain-settings/:key", async (req, res) => {
+    const setting = await storage.getChainSetting(req.params.key);
+    if (!setting) {
+      return res.status(404).json({ error: "Setting not found" });
+    }
+    res.json(setting);
+  });
+
+  app.put("/api/chain-settings/:key", async (req, res) => {
+    try {
+      const settingSchema = z.object({
+        value: z.string(),
+        description: z.string().optional(),
+      });
+      const data = settingSchema.parse(req.body);
+      const setting = await storage.setChainSetting({
+        key: req.params.key,
+        value: data.value,
+        description: data.description,
+      });
+      res.json(setting);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/scoring-profiles", async (req, res) => {
     const profiles = await storage.getScoringProfiles();
     res.json(profiles);
@@ -527,6 +585,105 @@ export async function registerRoutes(
       res.json({ message: "Email verificata con successo! Ora puoi accedere." });
     } catch (error) {
       res.status(500).json({ error: "Errore durante la verifica" });
+    }
+  });
+
+  app.get("/api/rankings", async (req, res) => {
+    try {
+      const gender = req.query.gender as string | undefined;
+      const level = req.query.level as string | undefined;
+      const clubId = req.query.clubId ? parseInt(req.query.clubId as string) : undefined;
+
+      let rollingWeeks: number | null = null;
+
+      if (clubId) {
+        const club = await storage.getClub(clubId);
+        if (club && club.rollingWeeks !== null && club.rollingWeeks !== undefined) {
+          rollingWeeks = club.rollingWeeks === 0 ? null : club.rollingWeeks;
+        } else {
+          const chainSetting = await storage.getChainSetting('rollingWeeks');
+          if (chainSetting && chainSetting.value !== '0') {
+            rollingWeeks = parseInt(chainSetting.value);
+          }
+        }
+      } else {
+        const chainSetting = await storage.getChainSetting('rollingWeeks');
+        if (chainSetting && chainSetting.value !== '0') {
+          rollingWeeks = parseInt(chainSetting.value);
+        }
+      }
+
+      const cutoffDate = rollingWeeks 
+        ? new Date(Date.now() - rollingWeeks * 7 * 24 * 60 * 60 * 1000) 
+        : null;
+
+      const players = await storage.getPlayers();
+      const tournaments = await storage.getTournaments();
+      const matches = await storage.getMatches();
+
+      const playerPoints: Record<string, number> = {};
+
+      players.forEach(player => {
+        if (gender && player.gender !== gender) return;
+        if (level && player.level !== level) return;
+        if (clubId && player.clubId !== clubId) return;
+        playerPoints[player.id] = 0;
+      });
+
+      for (const tournament of tournaments) {
+        if (tournament.status !== 'completed') continue;
+        const tournamentDate = tournament.endDate || tournament.startDate;
+        if (cutoffDate && new Date(tournamentDate) < cutoffDate) continue;
+
+        const results = await storage.getTournamentResults(tournament.id);
+        for (const result of results) {
+          if (result.playerId && playerPoints[result.playerId] !== undefined) {
+            playerPoints[result.playerId] += result.finalPoints;
+          }
+          if (result.player2Id && playerPoints[result.player2Id] !== undefined) {
+            playerPoints[result.player2Id] += result.finalPoints;
+          }
+        }
+      }
+
+      for (const match of matches) {
+        if (cutoffDate && new Date(match.playedAt) < cutoffDate) continue;
+
+        const winnerPlayers = match.winnerTeam === 1 
+          ? [match.team1Player1Id, match.team1Player2Id]
+          : [match.team2Player1Id, match.team2Player2Id];
+
+        winnerPlayers.forEach(playerId => {
+          if (playerId && playerPoints[playerId] !== undefined) {
+            playerPoints[playerId] += match.pointsAwarded;
+          }
+        });
+      }
+
+      const rankings = Object.entries(playerPoints)
+        .map(([playerId, points]) => {
+          const player = players.find(p => p.id === playerId);
+          return {
+            playerId,
+            firstName: player?.firstName || '',
+            lastName: player?.lastName || '',
+            gender: player?.gender || '',
+            level: player?.level || '',
+            clubId: player?.clubId,
+            points,
+          };
+        })
+        .sort((a, b) => b.points - a.points)
+        .map((entry, index) => ({ ...entry, position: index + 1 }));
+
+      res.json({
+        rankings,
+        rollingWeeks: rollingWeeks || null,
+        cutoffDate: cutoffDate?.toISOString() || null,
+      });
+    } catch (error) {
+      console.error('Error calculating rankings:', error);
+      res.status(500).json({ error: 'Internal server error' });
     }
   });
 

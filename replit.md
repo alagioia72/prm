@@ -82,6 +82,14 @@ Il prototipo include:
 - **Moltiplicatori decimali**: Ogni torneo ha un moltiplicatore (0.1-10x) che moltiplica i punti base
 - **Preview in tempo reale**: La tab Punteggi mostra anteprima dei punti con moltiplicatori x1, x1.5, x2
 - **Default**: 1°=100pt, 2°=80pt, 3°=65pt, etc. Partecipazione=10pt
+- **Periodo Rolling**: I punti vengono calcolati solo per partite/tornei entro un periodo configurabile in settimane
+
+## Rolling Weeks Configuration
+- **Configurazione a livello catena**: L'admin può impostare un periodo rolling default per tutta la catena
+- **Configurazione a livello club**: Ogni club può avere un periodo rolling specifico che sovrascrive quello della catena
+- **Opzioni disponibili**: 4, 8, 12, 16, 24, 52 settimane o nessun limite
+- **API endpoint**: GET /api/rankings?gender=&level=&clubId= calcola i punti rispettando il periodo rolling
+- **Gestione**: Dashboard Admin > Tab Impostazioni
 
 ## Partite Libere (Free Matches)
 - I giocatori possono registrare partite giocate fuori dai tornei
@@ -114,6 +122,11 @@ Il prototipo include:
 - Template HTML responsive con branding Padel Club
 
 ## Recent Changes
+- 2024-12-11: Implementato sistema periodo rolling per calcolo classifiche (configurabile per catena e per club)
+- 2024-12-11: Tab "Impostazioni" in admin dashboard per configurare rolling weeks
+- 2024-12-11: API /api/rankings con supporto per filtro periodo rolling
+- 2024-12-11: API PATCH /api/clubs/:id per aggiornare rolling weeks del club
+- 2024-12-11: API /api/chain-settings per gestione impostazioni a livello catena
 - 2024-12-09: Implementato sistema registrazione utenti con password cifrata bcrypt
 - 2024-12-09: Aggiunta verifica email con token e reinvio verifica
 - 2024-12-09: Integrato Resend per invio email transazionali

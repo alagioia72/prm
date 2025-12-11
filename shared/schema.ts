@@ -23,6 +23,7 @@ export const clubs = pgTable("clubs", {
   address: text("address").notNull(),
   city: text("city").notNull(),
   courtsCount: integer("courts_count").notNull().default(1),
+  rollingWeeks: integer("rolling_weeks"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -33,6 +34,22 @@ export const insertClubSchema = createInsertSchema(clubs).omit({
 
 export type InsertClub = z.infer<typeof insertClubSchema>;
 export type Club = typeof clubs.$inferSelect;
+
+export const chainSettings = pgTable("chain_settings", {
+  id: serial("id").primaryKey(),
+  key: text("key").notNull().unique(),
+  value: text("value").notNull(),
+  description: text("description"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const insertChainSettingSchema = createInsertSchema(chainSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export type InsertChainSetting = z.infer<typeof insertChainSettingSchema>;
+export type ChainSetting = typeof chainSettings.$inferSelect;
 
 export const scoringProfiles = pgTable("scoring_profiles", {
   id: serial("id").primaryKey(),

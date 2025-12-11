@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration, type Player, type InsertPlayer, type TournamentRegistrationWithPlayers } from "@shared/schema";
+import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration, type Player, type InsertPlayer, type TournamentRegistrationWithPlayers, type ChainSetting, type InsertChainSetting } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -9,6 +9,11 @@ export interface IStorage {
   getClubs(): Promise<Club[]>;
   getClub(id: number): Promise<Club | undefined>;
   createClub(club: InsertClub): Promise<Club>;
+  updateClub(id: number, updates: Partial<InsertClub>): Promise<Club | undefined>;
+  
+  getChainSettings(): Promise<ChainSetting[]>;
+  getChainSetting(key: string): Promise<ChainSetting | undefined>;
+  setChainSetting(setting: InsertChainSetting): Promise<ChainSetting>;
   
   getScoringProfiles(): Promise<ScoringProfile[]>;
   getScoringProfile(id: number): Promise<ScoringProfile | undefined>;
@@ -54,6 +59,7 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private clubs: Map<number, Club>;
+  private chainSettings: Map<string, ChainSetting>;
   private scoringProfiles: Map<number, ScoringProfile>;
   private scoringEntries: Map<number, ScoringEntry[]>;
   private matches: Map<number, Match>;
@@ -68,10 +74,12 @@ export class MemStorage implements IStorage {
   private nextTournamentId = 1;
   private nextTournamentResultId = 1;
   private nextRegistrationId = 1;
+  private nextChainSettingId = 1;
 
   constructor() {
     this.users = new Map();
     this.clubs = new Map();
+    this.chainSettings = new Map();
     this.scoringProfiles = new Map();
     this.scoringEntries = new Map();
     this.matches = new Map();
@@ -113,9 +121,9 @@ export class MemStorage implements IStorage {
     this.scoringEntries.set(defaultProfile.id, defaultEntries);
 
     const defaultClubs: Club[] = [
-      { id: this.nextClubId++, name: "Padel Club Milano Centro", address: "Via Roma 123", city: "Milano", courtsCount: 6, createdAt: new Date() },
-      { id: this.nextClubId++, name: "Padel Club Milano Nord", address: "Via Torino 45", city: "Milano", courtsCount: 4, createdAt: new Date() },
-      { id: this.nextClubId++, name: "Padel Club Roma Sud", address: "Viale Europa 78", city: "Roma", courtsCount: 8, createdAt: new Date() },
+      { id: this.nextClubId++, name: "Padel Club Milano Centro", address: "Via Roma 123", city: "Milano", courtsCount: 6, rollingWeeks: null, createdAt: new Date() },
+      { id: this.nextClubId++, name: "Padel Club Milano Nord", address: "Via Torino 45", city: "Milano", courtsCount: 4, rollingWeeks: null, createdAt: new Date() },
+      { id: this.nextClubId++, name: "Padel Club Roma Sud", address: "Viale Europa 78", city: "Roma", courtsCount: 8, rollingWeeks: null, createdAt: new Date() },
     ];
     defaultClubs.forEach(club => this.clubs.set(club.id, club));
 
@@ -256,10 +264,40 @@ export class MemStorage implements IStorage {
       address: insertClub.address,
       city: insertClub.city,
       courtsCount: insertClub.courtsCount ?? 1,
+      rollingWeeks: insertClub.rollingWeeks ?? null,
       createdAt: new Date() 
     };
     this.clubs.set(id, club);
     return club;
+  }
+
+  async updateClub(id: number, updates: Partial<InsertClub>): Promise<Club | undefined> {
+    const club = this.clubs.get(id);
+    if (!club) return undefined;
+    const updated = { ...club, ...updates };
+    this.clubs.set(id, updated);
+    return updated;
+  }
+
+  async getChainSettings(): Promise<ChainSetting[]> {
+    return Array.from(this.chainSettings.values());
+  }
+
+  async getChainSetting(key: string): Promise<ChainSetting | undefined> {
+    return this.chainSettings.get(key);
+  }
+
+  async setChainSetting(setting: InsertChainSetting): Promise<ChainSetting> {
+    const existing = this.chainSettings.get(setting.key);
+    const chainSetting: ChainSetting = {
+      id: existing?.id ?? this.nextChainSettingId++,
+      key: setting.key,
+      value: setting.value,
+      description: setting.description ?? null,
+      updatedAt: new Date(),
+    };
+    this.chainSettings.set(setting.key, chainSetting);
+    return chainSetting;
   }
 
   async getScoringProfiles(): Promise<ScoringProfile[]> {

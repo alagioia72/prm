@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Shield, Users, Calendar, Trophy, Target, Search, Building2, Star, Save, RotateCcw } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Shield, Users, Calendar, Trophy, Target, Search, Building2, Star, Save, RotateCcw, Settings, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,9 @@ import { ClubCard, type Club } from "@/components/ClubCard";
 import { CreateTournamentDialog } from "@/components/CreateTournamentDialog";
 import { CreateClubDialog } from "@/components/CreateClubDialog";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 // todo: remove mock functionality
 const mockTournaments: Tournament[] = [
@@ -212,6 +215,10 @@ export default function AdminDashboard() {
             <TabsTrigger value="scoring" className="gap-2" data-testid="tab-admin-scoring">
               <Star className="h-4 w-4" />
               Punteggi
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2" data-testid="tab-admin-settings">
+              <Settings className="h-4 w-4" />
+              Impostazioni
             </TabsTrigger>
           </TabsList>
 
@@ -450,8 +457,200 @@ export default function AdminDashboard() {
               </CardContent>
             </Card>
           </TabsContent>
+
+          <TabsContent value="settings" className="space-y-6">
+            <SettingsPanel />
+          </TabsContent>
         </Tabs>
       </div>
+    </div>
+  );
+}
+
+function SettingsPanel() {
+  const { toast } = useToast();
+  const [chainRollingWeeks, setChainRollingWeeks] = useState<string>("");
+  const [clubSettings, setClubSettings] = useState<Record<number, string>>({});
+
+  const { data: chainSettings } = useQuery<{ id: number; key: string; value: string; description: string | null }[]>({
+    queryKey: ['/api/chain-settings'],
+  });
+
+  const { data: clubs } = useQuery<{ id: number; name: string; rollingWeeks: number | null }[]>({
+    queryKey: ['/api/clubs'],
+  });
+
+  useEffect(() => {
+    if (chainSettings) {
+      const rollingWeeksSetting = chainSettings.find(s => s.key === 'rollingWeeks');
+      if (rollingWeeksSetting) {
+        setChainRollingWeeks(rollingWeeksSetting.value);
+      }
+    }
+  }, [chainSettings]);
+
+  useEffect(() => {
+    if (clubs) {
+      const settings: Record<number, string> = {};
+      clubs.forEach(club => {
+        settings[club.id] = club.rollingWeeks?.toString() || "";
+      });
+      setClubSettings(settings);
+    }
+  }, [clubs]);
+
+  const updateChainSettingMutation = useMutation({
+    mutationFn: async (data: { key: string; value: string }) => {
+      return apiRequest('PUT', `/api/chain-settings/${data.key}`, { value: data.value });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/chain-settings'] });
+      toast({
+        title: "Impostazione salvata",
+        description: "L'impostazione della catena è stata aggiornata",
+      });
+    },
+  });
+
+  const updateClubMutation = useMutation({
+    mutationFn: async (data: { id: number; rollingWeeks: number | null }) => {
+      return apiRequest('PATCH', `/api/clubs/${data.id}`, { rollingWeeks: data.rollingWeeks });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clubs'] });
+      toast({
+        title: "Club aggiornato",
+        description: "Le impostazioni del club sono state aggiornate",
+      });
+    },
+  });
+
+  const handleSaveChainRollingWeeks = () => {
+    updateChainSettingMutation.mutate({
+      key: 'rollingWeeks',
+      value: chainRollingWeeks || "0",
+    });
+  };
+
+  const handleSaveClubRollingWeeks = (clubId: number) => {
+    const weeks = clubSettings[clubId];
+    updateClubMutation.mutate({
+      id: clubId,
+      rollingWeeks: weeks ? parseInt(weeks) : null,
+    });
+  };
+
+  const rollingWeeksOptions = [
+    { value: "", label: "Usa default catena" },
+    { value: "4", label: "4 settimane" },
+    { value: "8", label: "8 settimane" },
+    { value: "12", label: "12 settimane" },
+    { value: "16", label: "16 settimane" },
+    { value: "24", label: "24 settimane" },
+    { value: "52", label: "52 settimane (1 anno)" },
+  ];
+
+  const chainRollingWeeksOptions = [
+    { value: "0", label: "Nessun limite" },
+    { value: "4", label: "4 settimane" },
+    { value: "8", label: "8 settimane" },
+    { value: "12", label: "12 settimane" },
+    { value: "16", label: "16 settimane" },
+    { value: "24", label: "24 settimane" },
+    { value: "52", label: "52 settimane (1 anno)" },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            Periodo Rolling Punti - Catena
+          </CardTitle>
+          <CardDescription>
+            Imposta il numero di settimane da considerare per il calcolo delle classifiche a livello di catena.
+            Questo valore è il default per tutti i club che non hanno un'impostazione specifica.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4">
+            <div className="space-y-2 w-full sm:w-64">
+              <Label htmlFor="chain-rolling-weeks">Periodo Rolling (settimane)</Label>
+              <Select
+                value={chainRollingWeeks}
+                onValueChange={setChainRollingWeeks}
+              >
+                <SelectTrigger id="chain-rolling-weeks" data-testid="select-chain-rolling-weeks">
+                  <SelectValue placeholder="Seleziona periodo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {chainRollingWeeksOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button 
+              onClick={handleSaveChainRollingWeeks}
+              disabled={updateChainSettingMutation.isPending}
+              data-testid="button-save-chain-rolling-weeks"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Salva
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Periodo Rolling Punti - Per Club
+          </CardTitle>
+          <CardDescription>
+            Imposta un periodo rolling specifico per ogni club. Se non impostato, verrà utilizzato il valore della catena.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {clubs?.map((club) => (
+              <div 
+                key={club.id} 
+                className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-3 border-b last:border-0"
+              >
+                <div className="flex-1">
+                  <p className="font-medium">{club.name}</p>
+                </div>
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <Select
+                    value={clubSettings[club.id] || ""}
+                    onValueChange={(value) => setClubSettings(prev => ({ ...prev, [club.id]: value }))}
+                  >
+                    <SelectTrigger className="w-48" data-testid={`select-club-rolling-weeks-${club.id}`}>
+                      <SelectValue placeholder="Usa default catena" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {rollingWeeksOptions.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    size="sm"
+                    onClick={() => handleSaveClubRollingWeeks(club.id)}
+                    disabled={updateClubMutation.isPending}
+                    data-testid={`button-save-club-rolling-weeks-${club.id}`}
+                  >
+                    <Save className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
