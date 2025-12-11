@@ -237,6 +237,72 @@ export default function AdminDashboard() {
     queryKey: ['/api/matches'],
   });
 
+  const createClubMutation = useMutation({
+    mutationFn: async (data: { name: string; address: string; city: string; province: string; isMain: boolean }) => {
+      return apiRequest('POST', '/api/clubs', {
+        name: data.name,
+        address: data.address,
+        city: data.city,
+        courtsCount: 1,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clubs'] });
+      toast({
+        title: "Sede creata",
+        description: "La nuova sede è stata aggiunta con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile creare la sede",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createTournamentMutation = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      date: string;
+      clubId: number;
+      level: string;
+      gender: string;
+      maxParticipants: number;
+      pointsMultiplier: number;
+      registrationType: string;
+      format: string;
+    }) => {
+      return apiRequest('POST', '/api/tournaments', {
+        name: data.name,
+        clubId: data.clubId,
+        startDate: new Date(data.date).toISOString(),
+        registrationType: data.registrationType,
+        format: data.format,
+        gender: data.gender,
+        level: data.level,
+        maxParticipants: data.maxParticipants,
+        pointsMultiplier: data.pointsMultiplier,
+        status: 'upcoming',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tournaments'] });
+      toast({
+        title: "Torneo creato",
+        description: "Il nuovo torneo è stato creato con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile creare il torneo",
+        variant: "destructive",
+      });
+    },
+  });
+
   const clubs: Club[] = clubsData.map(club => ({
     id: club.id,
     name: club.name,
@@ -358,7 +424,7 @@ export default function AdminDashboard() {
                 />
               </div>
               <CreateClubDialog 
-                onSubmit={(data) => console.log('Club created:', data)}
+                onSubmit={(data) => createClubMutation.mutate(data)}
               />
             </div>
 
@@ -411,7 +477,8 @@ export default function AdminDashboard() {
                 />
               </div>
               <CreateTournamentDialog 
-                onSubmit={(data) => console.log('Tournament created:', data)}
+                clubs={clubsData.map(c => ({ id: c.id, name: c.name }))}
+                onSubmit={(data) => createTournamentMutation.mutate(data)}
               />
             </div>
 

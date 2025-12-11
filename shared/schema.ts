@@ -83,7 +83,10 @@ export const tournaments = pgTable("tournaments", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
-export const insertTournamentSchema = createInsertSchema(tournaments).omit({
+export const insertTournamentSchema = createInsertSchema(tournaments, {
+  startDate: z.union([z.date(), z.string().transform((s) => new Date(s))]),
+  endDate: z.union([z.date(), z.string().transform((s) => new Date(s))]).optional().nullable(),
+}).omit({
   id: true,
   createdAt: true,
 });

@@ -28,11 +28,17 @@ import {
 export type RegistrationType = 'couple' | 'individual';
 export type TournamentFormat = 'bracket' | 'round_robin';
 
+interface Club {
+  id: number;
+  name: string;
+}
+
 interface CreateTournamentDialogProps {
+  clubs?: Club[];
   onSubmit: (data: {
     name: string;
     date: string;
-    location: string;
+    clubId: number;
     level: string;
     gender: string;
     maxParticipants: number;
@@ -43,11 +49,11 @@ interface CreateTournamentDialogProps {
   trigger?: React.ReactNode;
 }
 
-export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDialogProps) {
+export function CreateTournamentDialog({ clubs = [], onSubmit, trigger }: CreateTournamentDialogProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [date, setDate] = useState("");
-  const [location, setLocation] = useState("");
+  const [clubId, setClubId] = useState<number | null>(null);
   const [level, setLevel] = useState("");
   const [gender, setGender] = useState("");
   const [maxParticipants, setMaxParticipants] = useState(16);
@@ -62,7 +68,7 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
   }, [registrationType]);
 
   const handleSubmit = () => {
-    if (!name || !date || !location || !level || !gender) {
+    if (!name || !date || !clubId || !level || !gender) {
       console.log("Compila tutti i campi obbligatori");
       return;
     }
@@ -70,7 +76,7 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
     onSubmit({
       name,
       date,
-      location,
+      clubId,
       level,
       gender,
       maxParticipants,
@@ -85,7 +91,7 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
   const resetForm = () => {
     setName("");
     setDate("");
-    setLocation("");
+    setClubId(null);
     setLevel("");
     setGender("");
     setMaxParticipants(16);
@@ -138,14 +144,19 @@ export function CreateTournamentDialog({ onSubmit, trigger }: CreateTournamentDi
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="location">Luogo *</Label>
-              <Input
-                id="location"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="es. Padel Club Milano"
-                data-testid="input-tournament-location"
-              />
+              <Label htmlFor="clubId">Sede *</Label>
+              <Select value={clubId ? String(clubId) : ""} onValueChange={(v) => setClubId(Number(v))}>
+                <SelectTrigger id="clubId" data-testid="select-tournament-club">
+                  <SelectValue placeholder="Seleziona sede" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clubs.map((club) => (
+                    <SelectItem key={club.id} value={String(club.id)}>
+                      {club.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 

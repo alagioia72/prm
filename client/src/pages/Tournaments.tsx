@@ -177,6 +177,47 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
     },
   });
 
+  const createTournamentMutation = useMutation({
+    mutationFn: async (data: {
+      name: string;
+      date: string;
+      clubId: number;
+      level: string;
+      gender: string;
+      maxParticipants: number;
+      pointsMultiplier: number;
+      registrationType: string;
+      format: string;
+    }) => {
+      return apiRequest('POST', '/api/tournaments', {
+        name: data.name,
+        clubId: data.clubId,
+        startDate: new Date(data.date).toISOString(),
+        registrationType: data.registrationType,
+        format: data.format,
+        gender: data.gender,
+        level: data.level,
+        maxParticipants: data.maxParticipants,
+        pointsMultiplier: data.pointsMultiplier,
+        status: 'upcoming',
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tournaments'] });
+      toast({
+        title: "Torneo creato",
+        description: "Il nuovo torneo è stato creato con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile creare il torneo",
+        variant: "destructive",
+      });
+    },
+  });
+
   const filteredTournaments = tournaments.filter((t) => {
     if (search && !t.name.toLowerCase().includes(search.toLowerCase())) return false;
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
@@ -369,7 +410,8 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
           </div>
           {isAdmin && (
             <CreateTournamentDialog 
-              onSubmit={(data) => console.log('Tournament created:', data)}
+              clubs={clubsData.map(c => ({ id: c.id, name: c.name }))}
+              onSubmit={(data) => createTournamentMutation.mutate(data)}
             />
           )}
         </div>

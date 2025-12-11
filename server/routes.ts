@@ -31,10 +31,13 @@ export async function registerRoutes(
 
   app.post("/api/clubs", async (req, res) => {
     try {
+      console.log("Creating club with data:", req.body);
       const data = insertClubSchema.parse(req.body);
+      console.log("Parsed club data:", data);
       const club = await storage.createClub(data);
       res.status(201).json(club);
     } catch (error) {
+      console.error("Error creating club:", error);
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
