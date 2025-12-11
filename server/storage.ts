@@ -1,11 +1,7 @@
-import { type User, type InsertUser, type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration, type Player, type InsertPlayer, type TournamentRegistrationWithPlayers, type ChainSetting, type InsertChainSetting } from "@shared/schema";
+import { type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration, type Player, type InsertPlayer, type TournamentRegistrationWithPlayers, type ChainSetting, type InsertChainSetting } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
-  getUser(id: string): Promise<User | undefined>;
-  getUserByUsername(username: string): Promise<User | undefined>;
-  createUser(user: InsertUser): Promise<User>;
-  
   getClubs(): Promise<Club[]>;
   getClub(id: number): Promise<Club | undefined>;
   createClub(club: InsertClub): Promise<Club>;
@@ -57,7 +53,6 @@ export interface IStorage {
 }
 
 export class MemStorage implements IStorage {
-  private users: Map<string, User>;
   private clubs: Map<number, Club>;
   private chainSettings: Map<string, ChainSetting>;
   private scoringProfiles: Map<number, ScoringProfile>;
@@ -77,7 +72,6 @@ export class MemStorage implements IStorage {
   private nextChainSettingId = 1;
 
   constructor() {
-    this.users = new Map();
     this.clubs = new Map();
     this.chainSettings = new Map();
     this.scoringProfiles = new Map();
@@ -229,23 +223,6 @@ export class MemStorage implements IStorage {
       { id: "player-12", firstName: "Valentina", lastName: "Viola", email: "valentina@test.com", password: seedPasswordHash, gender: "female", level: "intermediate", clubId: 3, totalPoints: 110, emailVerified: true, verificationToken: null, createdAt: new Date() },
     ];
     defaultPlayers.forEach(player => this.players.set(player.id, player));
-  }
-
-  async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
-  }
-
-  async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
-  }
-
-  async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
   }
 
   async getClubs(): Promise<Club[]> {
