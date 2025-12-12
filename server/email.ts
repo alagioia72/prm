@@ -1,29 +1,29 @@
 import nodemailer from 'nodemailer';
 
+// Use port 587 (STARTTLS) or 465 (SMTPS) - port 25 is often blocked by cloud providers
+const smtpPort = parseInt(process.env.SMTP_PORT || '587');
+const isSecure = smtpPort === 465;
+
 const transporter = nodemailer.createTransport({
-  host: '62.149.128.163',
-  port: 465,
-  secure: true,
+  host: process.env.SMTP_HOST || 'smtp.gonetta.it',
+  port: smtpPort,
+  secure: isSecure,
   auth: {
     user: process.env.SMTP_USER || 'postmaster@gonetta.it',
     pass: process.env.SMTP_PASSWORD,
-  }
+  },
+  tls: {
+    rejectUnauthorized: false
+  },
+  connectionTimeout: 30000,
+  greetingTimeout: 30000,
+  socketTimeout: 30000
 });
 
 const fromEmail = process.env.SMTP_USER || 'postmaster@gonetta.it';
 
 export async function sendVerificationEmail(toEmail: string, firstName: string, verificationToken: string) {
   try {
-    try {
-      await transporter.verify();
-      console.log("Server is ready to take our messages");
-    } catch (err) {
-      console.error("Verification failed", err);
-    }
-    
-    console.log('SMTP Configuration:');
-    console.log(process.env.SMTP_PASSWORD);
-    console.log(transporter);
     const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
     
     await transporter.sendMail({
@@ -105,6 +105,7 @@ export async function sendTournamentNotification(
 
 export async function testSmtpConnection(): Promise<boolean> {
   try {
+    console.log(`Testing SMTP connection to ${process.env.SMTP_HOST}:${smtpPort} (secure: ${isSecure})`);
     await transporter.verify();
     console.log('SMTP connection verified successfully');
     return true;
