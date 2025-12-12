@@ -40,3 +40,10 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.0", "resend:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+SMTP_HOST = "smtp.gonetta.it"
+SMTP_PORT = "465"
+SMTP_USER = "postmaster@gonetta.it"

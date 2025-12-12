@@ -1,4 +1,4 @@
-import { Calendar, Users, MapPin, User, Users2, Star, Trophy } from "lucide-react";
+import { Calendar, Users, MapPin, User, Users2, Star, Trophy, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,8 @@ interface TournamentCardProps {
   onRegister?: (id: number) => void;
   onViewDetails?: (id: number) => void;
   onAssignRanking?: (tournament: Tournament) => void;
+  onEdit?: (id: number) => void;
+  onDelete?: (id: number) => void;
   isRegistered?: boolean;
   isAdmin?: boolean;
   isAuthenticated?: boolean;
@@ -61,7 +63,7 @@ const formatLabels = {
   round_robin: 'Tutti vs Tutti',
 };
 
-export function TournamentCard({ tournament, onRegister, onViewDetails, onAssignRanking, isRegistered, isAdmin, isAuthenticated }: TournamentCardProps) {
+export function TournamentCard({ tournament, onRegister, onViewDetails, onAssignRanking, onEdit, onDelete, isRegistered, isAdmin, isAuthenticated }: TournamentCardProps) {
   const spotsLeft = tournament.maxParticipants - tournament.currentParticipants;
   const participantLabel = tournament.registrationType === 'couple' ? 'coppie' : 'giocatori';
   
@@ -72,12 +74,34 @@ export function TournamentCard({ tournament, onRegister, onViewDetails, onAssign
           <CardTitle className="text-lg font-bold line-clamp-2" data-testid={`text-tournament-name-${tournament.id}`}>
             {tournament.name}
           </CardTitle>
-          <Badge 
-            variant={tournament.status === 'open' ? 'default' : tournament.status === 'in_progress' ? 'secondary' : 'outline'}
-            data-testid={`badge-status-${tournament.id}`}
-          >
-            {statusLabels[tournament.status]}
-          </Badge>
+          <div className="flex items-center gap-1">
+            {isAdmin && onEdit && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => onEdit(tournament.id)}
+                data-testid={`button-edit-tournament-${tournament.id}`}
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+            )}
+            {isAdmin && onDelete && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => onDelete(tournament.id)}
+                data-testid={`button-delete-tournament-${tournament.id}`}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+            <Badge 
+              variant={tournament.status === 'open' ? 'default' : tournament.status === 'in_progress' ? 'secondary' : 'outline'}
+              data-testid={`badge-status-${tournament.id}`}
+            >
+              {statusLabels[tournament.status]}
+            </Badge>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2 mt-2">
           <Badge variant="outline">{levelLabels[tournament.level]}</Badge>

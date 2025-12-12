@@ -8,7 +8,9 @@ import { StatsCard } from "@/components/StatsCard";
 import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { MatchResultCard, type MatchResult } from "@/components/MatchResultCard";
 import { AddMatchDialog } from "@/components/AddMatchDialog";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface HomeProps {
   user: {
@@ -97,6 +99,47 @@ export default function Home({ user }: HomeProps) {
 
   const { data: currentPlayer } = useQuery<PlayerFromAPI>({
     queryKey: ['/api/players', user.id],
+  });
+
+  const { toast } = useToast();
+
+  const createMatchMutation = useMutation({
+    mutationFn: async (data: {
+      clubId: number;
+      team1Player1Id: string;
+      team1Player2Id?: string;
+      team2Player1Id: string;
+      team2Player2Id?: string;
+      set1Team1: number;
+      set1Team2: number;
+      set2Team1: number;
+      set2Team2: number;
+      set3Team1?: number;
+      set3Team2?: number;
+      setsPlayed: number;
+      winnerTeam: number;
+      pointsAwarded: number;
+    }) => {
+      return apiRequest('POST', '/api/matches', {
+        ...data,
+        playedAt: new Date().toISOString(),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/matches'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/matches/player', user.id] });
+      toast({
+        title: "Partita registrata",
+        description: "La partita è stata salvata con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile registrare la partita",
+        variant: "destructive",
+      });
+    },
   });
 
   const mapStatus = (status: string): 'open' | 'in_progress' | 'completed' => {
@@ -212,7 +255,7 @@ export default function Home({ user }: HomeProps) {
           </div>
           <AddMatchDialog 
             players={playersForDialog}
-            onSubmit={(data) => console.log('Match submitted:', data)}
+            onSubmit={(data) => createMatchMutation.mutate(data)}
           />
         </div>
 
