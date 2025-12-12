@@ -1,11 +1,11 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { insertClubSchema, insertScoringProfileSchema, insertMatchSchema, insertTournamentSchema, insertTournamentResultSchema, registerPlayerSchema, loginSchema } from "@shared/schema";
+import { storage } from "./storage.ts";
+import { insertClubSchema, insertScoringProfileSchema, insertMatchSchema, insertTournamentSchema, insertTournamentResultSchema, registerPlayerSchema, loginSchema } from "../shared/schema.ts";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
-import { sendVerificationEmail, sendTournamentNotification } from "./email";
+import { sendVerificationEmail, sendTournamentNotification } from "./email.ts";
 
 export async function registerRoutes(
   httpServer: Server,

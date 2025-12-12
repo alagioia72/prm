@@ -1,5 +1,5 @@
-import { type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration, type Player, type InsertPlayer, type TournamentRegistrationWithPlayers, type ChainSetting, type InsertChainSetting, clubs, chainSettings, scoringProfiles, scoringEntries, tournaments, matches, tournamentResults, tournamentRegistrations, players } from "@shared/schema";
-import { db } from "./db";
+import { type ScoringProfile, type InsertScoringProfile, type ScoringEntry, type InsertScoringEntry, type ScoringProfileWithEntries, type Club, type InsertClub, type Match, type InsertMatch, type MatchPointsCalculation, type TournamentResult, type InsertTournamentResult, type Tournament, type InsertTournament, type TournamentRegistration, type InsertTournamentRegistration, type Player, type InsertPlayer, type TournamentRegistrationWithPlayers, type ChainSetting, type InsertChainSetting, clubs, chainSettings, scoringProfiles, scoringEntries, tournaments, matches, tournamentResults, tournamentRegistrations, players } from "../shared/schema.ts";
+import { db } from "./db.ts";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import bcrypt from "bcryptjs";
 
