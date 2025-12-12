@@ -24,7 +24,9 @@ const fromEmail = process.env.SMTP_USER || 'postmaster@gonetta.it';
 
 export async function sendVerificationEmail(toEmail: string, firstName: string, verificationToken: string) {
   try {
-    const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
+    const appDomain = process.env.APP_DOMAIN || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
+    const protocol = appDomain.includes('localhost') ? 'http' : 'https';
+    const verificationUrl = `${protocol}://${appDomain}/verify-email?token=${verificationToken}`;
     
     await transporter.sendMail({
       from: `"GonettaGO" <${fromEmail}>`,
@@ -64,7 +66,9 @@ export async function sendTournamentNotification(
   tournamentLevel: string
 ) {
   try {
-    const tournamentsUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/tournaments`;
+    const appDomain = process.env.APP_DOMAIN || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
+    const protocol = appDomain.includes('localhost') ? 'http' : 'https';
+    const tournamentsUrl = `${protocol}://${appDomain}/tournaments`;
     
     const genderLabel = tournamentGender === 'male' ? 'Maschile' : tournamentGender === 'female' ? 'Femminile' : 'Misto';
     const levelLabel = tournamentLevel === 'beginner' ? 'Principianti' : tournamentLevel === 'intermediate' ? 'Intermedio' : 'Avanzato';
