@@ -17,6 +17,9 @@ const fromEmail = process.env.SMTP_USER || 'postmaster@gonetta.it';
 
 export async function sendVerificationEmail(toEmail: string, firstName: string, verificationToken: string) {
   try {
+    console.log('SMTP Configuration:');
+    console.log(process.env.SMTP_PASSWORD);
+    console.log(transporter);
     const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
     
     await transporter.sendMail({
