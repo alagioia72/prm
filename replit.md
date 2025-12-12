@@ -124,10 +124,14 @@ Il prototipo include:
 - **Password**: Cifrata con bcrypt (10 rounds), mai esposta nelle API
 - **Session**: Salvata in localStorage (frontend), include role per determinare privilegi admin
 
-## Email Notifications (Resend)
+## Email Notifications (SMTP)
 - Email di verifica inviate alla registrazione
 - Notifiche automatiche ai giocatori idonei quando viene creato un nuovo torneo
-- Template HTML responsive con branding Padel Club
+- Template HTML responsive con branding GonettaGO
+- SMTP via smtp.gonetta.it:465 (Aruba, SSL/TLS)
+
+## User Preferences
+- **Import con estensione**: Usare sempre l'estensione `.ts` negli import TypeScript (es: `import { foo } from "./bar.ts"`)
 
 ## Recent Changes
 - 2024-12-12: Implementata funzionalità edit/delete per tornei (PATCH/DELETE /api/tournaments/:id)
