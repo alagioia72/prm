@@ -17,6 +17,13 @@ const fromEmail = process.env.SMTP_USER || 'postmaster@gonetta.it';
 
 export async function sendVerificationEmail(toEmail: string, firstName: string, verificationToken: string) {
   try {
+    try {
+      await transporter.verify();
+      console.log("Server is ready to take our messages");
+    } catch (err) {
+      console.error("Verification failed", err);
+    }
+    
     console.log('SMTP Configuration:');
     console.log(process.env.SMTP_PASSWORD);
     console.log(transporter);
