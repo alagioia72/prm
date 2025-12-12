@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Shield, Users, Calendar, Trophy, Target, Search, Building2, Star, Save, RotateCcw, Settings, Clock } from "lucide-react";
+import { Shield, Users, Calendar, Trophy, Target, Search, Building2, Star, Save, RotateCcw, Settings, Clock, Pencil, Trash2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,9 @@ import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { ClubCard, type Club } from "@/components/ClubCard";
 import { CreateTournamentDialog } from "@/components/CreateTournamentDialog";
 import { CreateClubDialog } from "@/components/CreateClubDialog";
+import { EditClubDialog } from "@/components/EditClubDialog";
+import { EditPlayerDialog } from "@/components/EditPlayerDialog";
+import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -93,10 +96,14 @@ interface MatchFromAPI {
   playedAt: string;
 }
 
-function PlayersManagement() {
+function PlayersManagement({ clubs }: { clubs: { id: number; name: string }[] }) {
   const { toast } = useToast();
   const [playerSearch, setPlayerSearch] = useState("");
   const { user } = useAuth();
+  const [editingPlayer, setEditingPlayer] = useState<Player | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deletePlayer, setDeletePlayer] = useState<Player | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   
   const { data: players = [], isLoading } = useQuery<Player[]>({
     queryKey: ['/api/players'],
@@ -122,6 +129,48 @@ function PlayersManagement() {
       });
     },
   });
+
+  const updatePlayerMutation = useMutation({
+    mutationFn: async ({ playerId, data }: { playerId: string; data: any }) => {
+      const response = await apiRequest('PATCH', `/api/players/${playerId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/players'] });
+      toast({
+        title: "Giocatore aggiornato",
+        description: "I dati del giocatore sono stati modificati con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il giocatore",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deletePlayerMutation = useMutation({
+    mutationFn: async (playerId: string) => {
+      const response = await apiRequest('DELETE', `/api/players/${playerId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/players'] });
+      toast({
+        title: "Giocatore eliminato",
+        description: "Il giocatore è stato eliminato con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare il giocatore",
+        variant: "destructive",
+      });
+    },
+  });
   
   const filteredPlayers = players.filter(player => 
     !playerSearch || 
@@ -132,6 +181,28 @@ function PlayersManagement() {
   
   const handleRoleChange = (playerId: string, newRole: string) => {
     updateRoleMutation.mutate({ playerId, role: newRole });
+  };
+
+  const handleEditPlayer = (player: Player) => {
+    setEditingPlayer(player);
+    setEditDialogOpen(true);
+  };
+
+  const handleSavePlayer = (id: string, data: any) => {
+    updatePlayerMutation.mutate({ playerId: id, data });
+  };
+
+  const handleDeletePlayer = (player: Player) => {
+    setDeletePlayer(player);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDeletePlayer = () => {
+    if (deletePlayer) {
+      deletePlayerMutation.mutate(deletePlayer.id);
+      setDeleteDialogOpen(false);
+      setDeletePlayer(null);
+    }
   };
   
   if (isLoading) {
@@ -145,71 +216,109 @@ function PlayersManagement() {
   }
   
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Users className="h-5 w-5" />
-          Gestione Giocatori e Ruoli
-        </CardTitle>
-        <CardDescription>
-          Visualizza tutti i giocatori e modifica i loro ruoli (player/admin)
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Cerca per nome, cognome o email..."
-            value={playerSearch}
-            onChange={(e) => setPlayerSearch(e.target.value)}
-            className="pl-10"
-            data-testid="input-search-players"
-          />
-        </div>
-        
-        <div className="space-y-2">
-          {filteredPlayers.length === 0 ? (
-            <p className="text-center text-muted-foreground py-4">Nessun giocatore trovato</p>
-          ) : (
-            filteredPlayers.map((player) => (
-              <div 
-                key={player.id} 
-                className="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-4 border rounded-md gap-3"
-                data-testid={`row-player-${player.id}`}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium">{player.firstName} {player.lastName}</p>
-                    <Badge variant="outline" className="text-xs">
-                      {levelLabels[player.level as keyof typeof levelLabels] || player.level}
-                    </Badge>
-                    {player.role === "admin" && (
-                      <Badge variant="default" className="text-xs">Admin</Badge>
-                    )}
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Gestione Giocatori e Ruoli
+          </CardTitle>
+          <CardDescription>
+            Visualizza, modifica ed elimina i giocatori e gestisci i loro ruoli
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Cerca per nome, cognome o email..."
+              value={playerSearch}
+              onChange={(e) => setPlayerSearch(e.target.value)}
+              className="pl-10"
+              data-testid="input-search-players"
+            />
+          </div>
+          
+          <div className="space-y-2">
+            {filteredPlayers.length === 0 ? (
+              <p className="text-center text-muted-foreground py-4">Nessun giocatore trovato</p>
+            ) : (
+              filteredPlayers.map((player) => (
+                <div 
+                  key={player.id} 
+                  className="flex flex-col sm:flex-row sm:items-center justify-between py-3 px-4 border rounded-md gap-3"
+                  data-testid={`row-player-${player.id}`}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium">{player.firstName} {player.lastName}</p>
+                      <Badge variant="outline" className="text-xs">
+                        {levelLabels[player.level as keyof typeof levelLabels] || player.level}
+                      </Badge>
+                      <Badge variant="secondary" className="text-xs">
+                        {player.gender === 'male' ? 'M' : 'F'}
+                      </Badge>
+                      {player.role === "admin" && (
+                        <Badge variant="default" className="text-xs">Admin</Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground truncate">{player.email}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground truncate">{player.email}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Select
+                      value={player.role}
+                      onValueChange={(value) => handleRoleChange(player.id, value)}
+                      disabled={updateRoleMutation.isPending}
+                    >
+                      <SelectTrigger className="w-28" data-testid={`select-role-${player.id}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="player">Player</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      size="icon" 
+                      variant="ghost"
+                      onClick={() => handleEditPlayer(player)}
+                      data-testid={`button-edit-player-${player.id}`}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button 
+                      size="icon" 
+                      variant="ghost"
+                      onClick={() => handleDeletePlayer(player)}
+                      data-testid={`button-delete-player-${player.id}`}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={player.role}
-                    onValueChange={(value) => handleRoleChange(player.id, value)}
-                    disabled={updateRoleMutation.isPending}
-                  >
-                    <SelectTrigger className="w-32" data-testid={`select-role-${player.id}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="player">Player</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <EditPlayerDialog
+        player={editingPlayer}
+        clubs={clubs}
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSubmit={handleSavePlayer}
+      />
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onConfirm={confirmDeletePlayer}
+        title="Elimina Giocatore"
+        description="Sei sicuro di voler eliminare questo giocatore? Questa azione non può essere annullata."
+        itemName={deletePlayer ? `${deletePlayer.firstName} ${deletePlayer.lastName}` : undefined}
+      />
+    </>
   );
 }
 
@@ -219,6 +328,10 @@ export default function AdminDashboard() {
   const [scoringEntries, setScoringEntries] = useState<ScoringEntry[]>(defaultScoringEntries);
   const [participationPoints, setParticipationPoints] = useState(10);
   const [isScoringDirty, setIsScoringDirty] = useState(false);
+  const [editingClub, setEditingClub] = useState<ClubFromAPI | null>(null);
+  const [editClubDialogOpen, setEditClubDialogOpen] = useState(false);
+  const [deleteClub, setDeleteClub] = useState<ClubFromAPI | null>(null);
+  const [deleteClubDialogOpen, setDeleteClubDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: clubsData = [], isLoading: clubsLoading } = useQuery<ClubFromAPI[]>({
@@ -302,6 +415,76 @@ export default function AdminDashboard() {
       });
     },
   });
+
+  const updateClubMutation = useMutation({
+    mutationFn: async ({ clubId, data }: { clubId: number; data: any }) => {
+      const response = await apiRequest('PATCH', `/api/clubs/${clubId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clubs'] });
+      toast({
+        title: "Sede aggiornata",
+        description: "I dati della sede sono stati modificati con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare la sede",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteClubMutation = useMutation({
+    mutationFn: async (clubId: number) => {
+      const response = await apiRequest('DELETE', `/api/clubs/${clubId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/clubs'] });
+      toast({
+        title: "Sede eliminata",
+        description: "La sede è stata eliminata con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare la sede",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditClub = (clubId: number) => {
+    const club = clubsData.find(c => c.id === clubId);
+    if (club) {
+      setEditingClub(club);
+      setEditClubDialogOpen(true);
+    }
+  };
+
+  const handleSaveClub = (id: number, data: any) => {
+    updateClubMutation.mutate({ clubId: id, data });
+  };
+
+  const handleDeleteClub = (clubId: number) => {
+    const club = clubsData.find(c => c.id === clubId);
+    if (club) {
+      setDeleteClub(club);
+      setDeleteClubDialogOpen(true);
+    }
+  };
+
+  const confirmDeleteClub = () => {
+    if (deleteClub) {
+      deleteClubMutation.mutate(deleteClub.id);
+      setDeleteClubDialogOpen(false);
+      setDeleteClub(null);
+    }
+  };
 
   const clubs: Club[] = clubsData.map(club => ({
     id: club.id,
@@ -455,8 +638,8 @@ export default function AdminDashboard() {
                       key={club.id}
                       club={club}
                       isAdmin
-                      onEdit={(id) => console.log('Edit club:', id)}
-                      onDelete={(id) => console.log('Delete club:', id)}
+                      onEdit={(id) => handleEditClub(id)}
+                      onDelete={(id) => handleDeleteClub(id)}
                       onViewDetails={(id) => console.log('View club:', id)}
                     />
                   ))}
@@ -512,7 +695,7 @@ export default function AdminDashboard() {
           </TabsContent>
 
           <TabsContent value="players" className="space-y-6">
-            <PlayersManagement />
+            <PlayersManagement clubs={clubsData.map(c => ({ id: c.id, name: c.name }))} />
           </TabsContent>
 
           <TabsContent value="scoring" className="space-y-6">
@@ -657,6 +840,22 @@ export default function AdminDashboard() {
             <SettingsPanel />
           </TabsContent>
         </Tabs>
+
+        <EditClubDialog
+          club={editingClub}
+          open={editClubDialogOpen}
+          onOpenChange={setEditClubDialogOpen}
+          onSubmit={handleSaveClub}
+        />
+
+        <DeleteConfirmDialog
+          open={deleteClubDialogOpen}
+          onOpenChange={setDeleteClubDialogOpen}
+          onConfirm={confirmDeleteClub}
+          title="Elimina Sede"
+          description="Sei sicuro di voler eliminare questa sede? Questa azione non può essere annullata. Tutti i tornei e le partite associate verranno persi."
+          itemName={deleteClub?.name}
+        />
       </div>
     </div>
   );

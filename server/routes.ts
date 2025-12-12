@@ -66,6 +66,19 @@ export async function registerRoutes(
     }
   });
 
+  app.delete("/api/clubs/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const deleted = await storage.deleteClub(id);
+      if (!deleted) {
+        return res.status(404).json({ error: "Club not found" });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   app.get("/api/chain-settings", async (req, res) => {
     const settings = await storage.getChainSettings();
     res.json(settings);
@@ -496,7 +509,6 @@ export async function registerRoutes(
     try {
       const { role, adminId } = req.body;
       
-      // Verify adminId is provided and the caller is actually an admin
       if (!adminId) {
         return res.status(401).json({ error: "Autenticazione richiesta" });
       }
@@ -522,6 +534,55 @@ export async function registerRoutes(
       
       const { password, verificationToken, ...safePlayer } = updated;
       res.json(safePlayer);
+    } catch (error) {
+      res.status(500).json({ error: "Errore interno del server" });
+    }
+  });
+
+  app.patch("/api/players/:id", async (req, res) => {
+    try {
+      const updateSchema = z.object({
+        firstName: z.string().optional(),
+        lastName: z.string().optional(),
+        gender: z.enum(["male", "female"]).optional(),
+        level: z.enum(["beginner", "intermediate", "advanced"]).optional(),
+        clubId: z.number().nullable().optional(),
+      });
+      const updates = updateSchema.parse(req.body);
+      
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Giocatore non trovato" });
+      }
+      
+      const updated = await storage.updatePlayer(req.params.id, updates);
+      if (!updated) {
+        return res.status(500).json({ error: "Errore durante l'aggiornamento" });
+      }
+      
+      const { password, verificationToken, ...safePlayer } = updated;
+      res.json(safePlayer);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: "Errore interno del server" });
+    }
+  });
+
+  app.delete("/api/players/:id", async (req, res) => {
+    try {
+      const player = await storage.getPlayer(req.params.id);
+      if (!player) {
+        return res.status(404).json({ error: "Giocatore non trovato" });
+      }
+      
+      const deleted = await storage.deletePlayer(req.params.id);
+      if (!deleted) {
+        return res.status(500).json({ error: "Errore durante l'eliminazione" });
+      }
+      
+      res.json({ success: true });
     } catch (error) {
       res.status(500).json({ error: "Errore interno del server" });
     }

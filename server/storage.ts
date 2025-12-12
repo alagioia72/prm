@@ -8,6 +8,7 @@ export interface IStorage {
   getClub(id: number): Promise<Club | undefined>;
   createClub(club: InsertClub): Promise<Club>;
   updateClub(id: number, updates: Partial<InsertClub>): Promise<Club | undefined>;
+  deleteClub(id: number): Promise<boolean>;
   
   getChainSettings(): Promise<ChainSetting[]>;
   getChainSetting(key: string): Promise<ChainSetting | undefined>;
@@ -51,6 +52,7 @@ export interface IStorage {
   getPlayerByVerificationToken(token: string): Promise<Player | undefined>;
   createPlayer(player: InsertPlayer): Promise<Player>;
   updatePlayer(id: string, updates: Partial<InsertPlayer>): Promise<Player | undefined>;
+  deletePlayer(id: string): Promise<boolean>;
   getEligiblePlayersForTournament(gender: string, level: string): Promise<Player[]>;
   
   initializeDefaults(): Promise<void>;
@@ -127,6 +129,11 @@ export class DatabaseStorage implements IStorage {
   async updateClub(id: number, updates: Partial<InsertClub>): Promise<Club | undefined> {
     const [updated] = await db.update(clubs).set(updates).where(eq(clubs.id, id)).returning();
     return updated;
+  }
+
+  async deleteClub(id: number): Promise<boolean> {
+    const result = await db.delete(clubs).where(eq(clubs.id, id)).returning();
+    return result.length > 0;
   }
 
   async getChainSettings(): Promise<ChainSetting[]> {
@@ -339,6 +346,11 @@ export class DatabaseStorage implements IStorage {
   async updatePlayer(id: string, updates: Partial<InsertPlayer>): Promise<Player | undefined> {
     const [updated] = await db.update(players).set(updates).where(eq(players.id, id)).returning();
     return updated;
+  }
+
+  async deletePlayer(id: string): Promise<boolean> {
+    const result = await db.delete(players).where(eq(players.id, id)).returning();
+    return result.length > 0;
   }
 
   async getEligiblePlayersForTournament(gender: string, level: string): Promise<Player[]> {
