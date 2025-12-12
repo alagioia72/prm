@@ -1,15 +1,12 @@
 import nodemailer from 'nodemailer';
 
 const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gonetta.it',
+  host: '62.149.128.163',
   port: 465,
   secure: true,
   auth: {
     user: process.env.SMTP_USER || 'postmaster@gonetta.it',
     pass: process.env.SMTP_PASSWORD,
-  },
-  tls: {
-    rejectUnauthorized: false
   }
 });
 
