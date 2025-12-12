@@ -12,6 +12,8 @@ const mockTournament: Tournament = {
   currentParticipants: 12,
   status: 'open',
   pointsMultiplier: 2,
+  registrationType: 'couple',
+  format: 'bracket'
 };
 
 export default function TournamentCardExample() {
