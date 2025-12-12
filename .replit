@@ -45,5 +45,5 @@ integrations = ["javascript_database:1.0.0", "javascript_log_in_with_replit:1.0.
 
 [userenv.shared]
 SMTP_HOST = "smtp.gonetta.it"
-SMTP_PORT = "587"
+SMTP_PORT = "465"
 SMTP_USER = "postmaster@gonetta.it"
