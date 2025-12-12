@@ -292,11 +292,40 @@ export async function registerRoutes(
   app.patch("/api/tournaments/:id", async (req, res) => {
     try {
       const id = parseInt(req.params.id);
-      const tournament = await storage.updateTournament(id, req.body);
+      const existingTournament = await storage.getTournament(id);
+      if (!existingTournament) {
+        return res.status(404).json({ error: "Tournament not found" });
+      }
+      
+      const updates: any = { ...req.body };
+      if (updates.startDate) {
+        updates.startDate = new Date(updates.startDate);
+      }
+      if (updates.endDate) {
+        updates.endDate = new Date(updates.endDate);
+      }
+      
+      const tournament = await storage.updateTournament(id, updates);
+      res.json(tournament);
+    } catch (error) {
+      console.error("Error updating tournament:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/tournaments/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const tournament = await storage.getTournament(id);
       if (!tournament) {
         return res.status(404).json({ error: "Tournament not found" });
       }
-      res.json(tournament);
+      const deleted = await storage.deleteTournament(id);
+      if (deleted) {
+        res.json({ success: true, message: "Tournament deleted successfully" });
+      } else {
+        res.status(500).json({ error: "Failed to delete tournament" });
+      }
     } catch (error) {
       res.status(500).json({ error: "Internal server error" });
     }

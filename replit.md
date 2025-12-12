@@ -130,6 +130,15 @@ Il prototipo include:
 - Template HTML responsive con branding Padel Club
 
 ## Recent Changes
+- 2024-12-12: Implementata funzionalità edit/delete per tornei (PATCH/DELETE /api/tournaments/:id)
+- 2024-12-12: EditTournamentDialog per modifica tornei con tutti i campi
+- 2024-12-12: TournamentCard mostra pulsanti edit/delete per admin
+- 2024-12-12: deleteTournament elimina anche registrazioni e risultati collegati
+- 2024-12-12: Implementata funzionalità edit/delete per club e giocatori
+- 2024-12-12: EditClubDialog, EditPlayerDialog, DeleteConfirmDialog (riutilizzabile)
+- 2024-12-12: API PATCH /api/clubs/:id, DELETE /api/clubs/:id
+- 2024-12-12: API PATCH /api/players/:id, DELETE /api/players/:id
+- 2024-12-12: Fix SelectItem value vuoto in EditPlayerDialog (usa "none" per nessuna sede)
 - 2024-12-11: Rimosso tutto il mock data dal frontend - tutte le pagine ora usano dati reali dal database
 - 2024-12-11: Fix sicurezza: API /api/players non espone più password/verificationToken
 - 2024-12-11: Home, Tournaments, Rankings, MyMatches, Players, Profile usano useQuery per dati API

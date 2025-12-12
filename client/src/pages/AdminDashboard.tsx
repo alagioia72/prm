@@ -13,6 +13,7 @@ import { CreateTournamentDialog } from "@/components/CreateTournamentDialog";
 import { CreateClubDialog } from "@/components/CreateClubDialog";
 import { EditClubDialog } from "@/components/EditClubDialog";
 import { EditPlayerDialog } from "@/components/EditPlayerDialog";
+import { EditTournamentDialog } from "@/components/EditTournamentDialog";
 import { DeleteConfirmDialog } from "@/components/DeleteConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -332,6 +333,10 @@ export default function AdminDashboard() {
   const [editClubDialogOpen, setEditClubDialogOpen] = useState(false);
   const [deleteClub, setDeleteClub] = useState<ClubFromAPI | null>(null);
   const [deleteClubDialogOpen, setDeleteClubDialogOpen] = useState(false);
+  const [editingTournament, setEditingTournament] = useState<TournamentFromAPI | null>(null);
+  const [editTournamentDialogOpen, setEditTournamentDialogOpen] = useState(false);
+  const [deleteTournament, setDeleteTournament] = useState<TournamentFromAPI | null>(null);
+  const [deleteTournamentDialogOpen, setDeleteTournamentDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const { data: clubsData = [], isLoading: clubsLoading } = useQuery<ClubFromAPI[]>({
@@ -458,6 +463,48 @@ export default function AdminDashboard() {
     },
   });
 
+  const updateTournamentMutation = useMutation({
+    mutationFn: async ({ tournamentId, data }: { tournamentId: number; data: any }) => {
+      const response = await apiRequest('PATCH', `/api/tournaments/${tournamentId}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tournaments'] });
+      toast({
+        title: "Torneo aggiornato",
+        description: "I dati del torneo sono stati modificati con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile aggiornare il torneo",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteTournamentMutation = useMutation({
+    mutationFn: async (tournamentId: number) => {
+      const response = await apiRequest('DELETE', `/api/tournaments/${tournamentId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/tournaments'] });
+      toast({
+        title: "Torneo eliminato",
+        description: "Il torneo è stato eliminato con successo",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Errore",
+        description: "Impossibile eliminare il torneo",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleEditClub = (clubId: number) => {
     const club = clubsData.find(c => c.id === clubId);
     if (club) {
@@ -483,6 +530,34 @@ export default function AdminDashboard() {
       deleteClubMutation.mutate(deleteClub.id);
       setDeleteClubDialogOpen(false);
       setDeleteClub(null);
+    }
+  };
+
+  const handleEditTournament = (tournamentId: number) => {
+    const tournament = tournamentsData.find(t => t.id === tournamentId);
+    if (tournament) {
+      setEditingTournament(tournament);
+      setEditTournamentDialogOpen(true);
+    }
+  };
+
+  const handleSaveTournament = (id: number, data: any) => {
+    updateTournamentMutation.mutate({ tournamentId: id, data });
+  };
+
+  const handleDeleteTournament = (tournamentId: number) => {
+    const tournament = tournamentsData.find(t => t.id === tournamentId);
+    if (tournament) {
+      setDeleteTournament(tournament);
+      setDeleteTournamentDialogOpen(true);
+    }
+  };
+
+  const confirmDeleteTournament = () => {
+    if (deleteTournament) {
+      deleteTournamentMutation.mutate(deleteTournament.id);
+      setDeleteTournamentDialogOpen(false);
+      setDeleteTournament(null);
     }
   };
 
@@ -687,7 +762,10 @@ export default function AdminDashboard() {
                     <TournamentCard
                       key={tournament.id}
                       tournament={tournament}
+                      isAdmin={true}
                       onViewDetails={(id) => console.log('Manage tournament:', id)}
+                      onEdit={handleEditTournament}
+                      onDelete={handleDeleteTournament}
                     />
                   ))}
               </div>
@@ -855,6 +933,23 @@ export default function AdminDashboard() {
           title="Elimina Sede"
           description="Sei sicuro di voler eliminare questa sede? Questa azione non può essere annullata. Tutti i tornei e le partite associate verranno persi."
           itemName={deleteClub?.name}
+        />
+
+        <EditTournamentDialog
+          tournament={editingTournament}
+          clubs={clubsData.map(c => ({ id: c.id, name: c.name }))}
+          open={editTournamentDialogOpen}
+          onOpenChange={setEditTournamentDialogOpen}
+          onSubmit={handleSaveTournament}
+        />
+
+        <DeleteConfirmDialog
+          open={deleteTournamentDialogOpen}
+          onOpenChange={setDeleteTournamentDialogOpen}
+          onConfirm={confirmDeleteTournament}
+          title="Elimina Torneo"
+          description="Sei sicuro di voler eliminare questo torneo? Questa azione non può essere annullata. Tutte le iscrizioni e i risultati associati verranno persi."
+          itemName={deleteTournament?.name}
         />
       </div>
     </div>
