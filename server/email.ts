@@ -1,56 +1,31 @@
-// Resend email integration
-import { Resend } from 'resend';
+import nodemailer from 'nodemailer';
 
-let connectionSettings: any;
-
-async function getCredentials() {
-  const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
-  const xReplitToken = process.env.REPL_IDENTITY 
-    ? 'repl ' + process.env.REPL_IDENTITY 
-    : process.env.WEB_REPL_RENEWAL 
-    ? 'depl ' + process.env.WEB_REPL_RENEWAL 
-    : null;
-
-  if (!xReplitToken) {
-    throw new Error('X_REPLIT_TOKEN not found for repl/depl');
+const transporter = nodemailer.createTransport({
+  host: process.env.SMTP_HOST || 'smtp.gonetta.it',
+  port: parseInt(process.env.SMTP_PORT || '25'),
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER || 'postmaster@gonetta.it',
+    pass: process.env.SMTP_PASSWORD,
+  },
+  tls: {
+    rejectUnauthorized: false
   }
+});
 
-  connectionSettings = await fetch(
-    'https://' + hostname + '/api/v2/connection?include_secrets=true&connector_names=resend',
-    {
-      headers: {
-        'Accept': 'application/json',
-        'X_REPLIT_TOKEN': xReplitToken
-      }
-    }
-  ).then(res => res.json()).then(data => data.items?.[0]);
-
-  if (!connectionSettings || (!connectionSettings.settings.api_key)) {
-    throw new Error('Resend not connected');
-  }
-  return {apiKey: connectionSettings.settings.api_key, fromEmail: connectionSettings.settings.from_email};
-}
-
-export async function getResendClient() {
-  const { apiKey, fromEmail } = await getCredentials();
-  return {
-    client: new Resend(apiKey),
-    fromEmail
-  };
-}
+const fromEmail = process.env.SMTP_USER || 'postmaster@gonetta.it';
 
 export async function sendVerificationEmail(toEmail: string, firstName: string, verificationToken: string) {
   try {
-    const { client, fromEmail } = await getResendClient();
     const verificationUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/verify-email?token=${verificationToken}`;
     
-    await client.emails.send({
-      from: fromEmail || 'noreply@resend.dev',
+    await transporter.sendMail({
+      from: `"GonettaGO" <${fromEmail}>`,
       to: toEmail,
-      subject: 'Padel Club - Verifica la tua email',
+      subject: 'GonettaGO - Verifica la tua email',
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h1 style="color: #16a34a;">Benvenuto su Padel Club!</h1>
+          <h1 style="color: #16a34a;">Benvenuto su GonettaGO!</h1>
           <p>Ciao ${firstName},</p>
           <p>Grazie per esserti registrato. Per completare la registrazione, clicca sul pulsante qui sotto per verificare la tua email:</p>
           <div style="text-align: center; margin: 30px 0;">
@@ -65,6 +40,7 @@ export async function sendVerificationEmail(toEmail: string, firstName: string, 
         </div>
       `
     });
+    console.log(`Verification email sent to ${toEmail}`);
     return true;
   } catch (error) {
     console.error('Error sending verification email:', error);
@@ -81,17 +57,16 @@ export async function sendTournamentNotification(
   tournamentLevel: string
 ) {
   try {
-    const { client, fromEmail } = await getResendClient();
     const tournamentsUrl = `${process.env.REPLIT_DEV_DOMAIN ? 'https://' + process.env.REPLIT_DEV_DOMAIN : 'http://localhost:5000'}/tournaments`;
     
     const genderLabel = tournamentGender === 'male' ? 'Maschile' : tournamentGender === 'female' ? 'Femminile' : 'Misto';
     const levelLabel = tournamentLevel === 'beginner' ? 'Principianti' : tournamentLevel === 'intermediate' ? 'Intermedio' : 'Avanzato';
     const dateStr = tournamentDate.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     
-    await client.emails.send({
-      from: fromEmail || 'noreply@resend.dev',
+    await transporter.sendMail({
+      from: `"GonettaGO" <${fromEmail}>`,
       to: toEmail,
-      subject: `Padel Club - Nuovo torneo: ${tournamentName}`,
+      subject: `GonettaGO - Nuovo torneo: ${tournamentName}`,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h1 style="color: #16a34a;">Nuovo Torneo Disponibile!</h1>
@@ -109,13 +84,25 @@ export async function sendTournamentNotification(
           </div>
           <p>Non perdere l'occasione di partecipare!</p>
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="color: #999; font-size: 12px;">Ricevi questa email perché sei iscritto a Padel Club e sei idoneo per questo torneo.</p>
+          <p style="color: #999; font-size: 12px;">Ricevi questa email perché sei iscritto a GonettaGO e sei idoneo per questo torneo.</p>
         </div>
       `
     });
+    console.log(`Tournament notification sent to ${toEmail}`);
     return true;
   } catch (error) {
     console.error('Error sending tournament notification:', error);
+    return false;
+  }
+}
+
+export async function testSmtpConnection(): Promise<boolean> {
+  try {
+    await transporter.verify();
+    console.log('SMTP connection verified successfully');
+    return true;
+  } catch (error) {
+    console.error('SMTP connection failed:', error);
     return false;
   }
 }
