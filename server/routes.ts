@@ -427,6 +427,7 @@ export async function registerRoutes(
         return res.status(404).json({ error: "Giocatore non trovato" });
       }
 
+      // Eligibility checks: gender and level must match tournament requirements
       if (tournament.gender !== "mixed" && player.gender !== tournament.gender) {
         const genderLabel = tournament.gender === "male" ? "maschile" : "femminile";
         return res.status(400).json({ error: `Questo torneo è riservato a giocatori di categoria ${genderLabel}` });
@@ -444,6 +445,7 @@ export async function registerRoutes(
           return res.status(404).json({ error: "Partner non trovato" });
         }
 
+        // Partner eligibility checks
         if (tournament.gender !== "mixed" && partner.gender !== tournament.gender) {
           const genderLabel = tournament.gender === "male" ? "maschile" : "femminile";
           return res.status(400).json({ error: `Il partner deve essere di categoria ${genderLabel}` });

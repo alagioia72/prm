@@ -35,7 +35,7 @@ export function TournamentRegistrationDialog({
   currentPlayerId,
   isOpen,
   onOpenChange,
-  onSuccess 
+  onSuccess,
 }: TournamentRegistrationDialogProps) {
   const [partnerId, setPartnerId] = useState<string>("");
   const [registrationError, setRegistrationError] = useState<string>("");
@@ -48,7 +48,8 @@ export function TournamentRegistrationDialog({
 
   const isCoupleTournament = tournament.registrationType === "couple";
 
-  const eligiblePartners = players.filter(p => {
+  // Filter partners by eligibility (must match tournament gender/level)
+  const availablePartners = players.filter(p => {
     if (p.id === currentPlayerId) return false;
     if (tournament.gender !== "mixed" && p.gender !== tournament.gender) return false;
     if (p.level !== tournament.level) return false;
@@ -124,10 +125,13 @@ export function TournamentRegistrationDialog({
     }
   };
 
-  const isCurrentPlayerEligible = currentPlayer && (
-    (tournament.gender === "mixed" || currentPlayer.gender === tournament.gender) &&
-    currentPlayer.level === tournament.level
-  );
+  const isPlayerEligible = (player: Player | undefined) => {
+    if (!player) return false;
+    return (tournament.gender === "mixed" || player.gender === tournament.gender) &&
+      player.level === tournament.level;
+  };
+
+  const isCurrentPlayerEligible = isPlayerEligible(currentPlayer);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -201,15 +205,15 @@ export function TournamentRegistrationDialog({
                   <label className="text-sm font-medium mb-2 block">Partner di squadra</label>
                   <Select value={partnerId} onValueChange={setPartnerId}>
                     <SelectTrigger data-testid="select-partner">
-                      <SelectValue placeholder="Seleziona il tuo partner" />
+                      <SelectValue placeholder="Seleziona il partner" />
                     </SelectTrigger>
                     <SelectContent>
-                      {eligiblePartners.length === 0 ? (
+                      {availablePartners.length === 0 ? (
                         <div className="p-2 text-sm text-muted-foreground text-center">
                           Nessun partner idoneo disponibile
                         </div>
                       ) : (
-                        eligiblePartners.map((player) => (
+                        availablePartners.map((player) => (
                           <SelectItem key={player.id} value={player.id}>
                             {player.firstName} {player.lastName}
                           </SelectItem>
@@ -217,7 +221,7 @@ export function TournamentRegistrationDialog({
                       )}
                     </SelectContent>
                   </Select>
-                  {eligiblePartners.length === 0 && (
+                  {availablePartners.length === 0 && (
                     <p className="text-xs text-muted-foreground mt-1">
                       I partner devono avere lo stesso genere ({formatGender(tournament.gender)}) e livello ({formatLevel(tournament.level)})
                     </p>
