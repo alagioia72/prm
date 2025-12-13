@@ -28,6 +28,7 @@ import {
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth.tsx";
 import type { ScoringProfileWithEntries } from "@shared/schema";
 
 interface TournamentsProps {
@@ -104,6 +105,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
   const [registrationTournament, setRegistrationTournament] = useState<BackendTournament | null>(null);
   
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const { data: tournamentsData = [], isLoading: tournamentsLoading } = useQuery<TournamentFromAPI[]>({
     queryKey: ['/api/tournaments'],
@@ -712,10 +714,10 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
         />
       )}
 
-      {registrationTournament && (
+      {registrationTournament && user && (
         <TournamentRegistrationDialog
           tournament={registrationTournament}
-          currentPlayerId=""
+          currentPlayerId={user.id}
           isOpen={registrationDialogOpen}
           onOpenChange={setRegistrationDialogOpen}
         />
