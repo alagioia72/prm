@@ -133,7 +133,11 @@ Il prototipo include:
 ## User Preferences
 - **Import con estensione**: Usare sempre l'estensione `.ts` negli import TypeScript (es: `import { foo } from "./bar.ts"`)
 
+## Known Limitations
+- **Admin non può iscrivere altri giocatori**: Gli admin non possono bypassare i controlli di idoneità per iscrivere giocatori ai tornei. Questa funzionalità richiederebbe autenticazione server-side con sessioni. Attualmente ogni giocatore può iscriversi solo ai tornei che corrispondono al proprio genere e livello.
+
 ## Recent Changes
+- 2024-12-13: Rimossa funzionalità admin bypass iscrizione tornei (richiede auth server-side per sicurezza)
 - 2024-12-13: Fix iscrizione tornei da pagina Tournaments (aggiunto useAuth per passare currentPlayerId)
 - 2024-12-12: Implementata funzionalità edit/delete per tornei (PATCH/DELETE /api/tournaments/:id)
 - 2024-12-12: EditTournamentDialog per modifica tornei con tutti i campi
