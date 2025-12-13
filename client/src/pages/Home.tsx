@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "wouter";
 import { Trophy, Calendar, Target, TrendingUp, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,9 +9,12 @@ import { StatsCard } from "@/components/StatsCard";
 import { TournamentCard, type Tournament } from "@/components/TournamentCard";
 import { MatchResultCard, type MatchResult } from "@/components/MatchResultCard";
 import { AddMatchDialog } from "@/components/AddMatchDialog";
+import { TournamentDetailsDialog } from "@/components/TournamentDetailsDialog";
+import { TournamentRegistrationDialog } from "@/components/TournamentRegistrationDialog";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import type { Tournament as BackendTournament } from "@shared/schema";
 
 interface HomeProps {
   user: {
@@ -81,6 +85,11 @@ interface PlayerFromAPI {
 }
 
 export default function Home({ user }: HomeProps) {
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [detailsTournament, setDetailsTournament] = useState<Tournament | null>(null);
+  const [registrationDialogOpen, setRegistrationDialogOpen] = useState(false);
+  const [registrationTournament, setRegistrationTournament] = useState<BackendTournament | null>(null);
+
   const { data: tournamentsData = [] } = useQuery<TournamentFromAPI[]>({
     queryKey: ['/api/tournaments'],
   });
@@ -333,8 +342,36 @@ export default function Home({ user }: HomeProps) {
                     <TournamentCard
                       key={tournament.id}
                       tournament={tournament}
-                      onRegister={(id) => console.log('Register for:', id)}
-                      onViewDetails={(id) => console.log('View details:', id)}
+                      isAuthenticated={true}
+                      onRegister={(id) => {
+                        const apiTournament = tournamentsData.find(t => t.id === id);
+                        if (apiTournament) {
+                          setRegistrationTournament({
+                            id: apiTournament.id,
+                            name: apiTournament.name,
+                            clubId: apiTournament.clubId,
+                            startDate: new Date(apiTournament.startDate),
+                            endDate: apiTournament.endDate ? new Date(apiTournament.endDate) : null,
+                            registrationType: apiTournament.registrationType as 'couple' | 'individual',
+                            format: apiTournament.format as 'bracket' | 'round_robin',
+                            gender: apiTournament.gender as 'male' | 'female' | 'mixed',
+                            level: apiTournament.level as 'beginner' | 'intermediate' | 'advanced',
+                            maxParticipants: apiTournament.maxParticipants,
+                            pointsMultiplier: apiTournament.pointsMultiplier,
+                            scoringProfileId: apiTournament.scoringProfileId,
+                            status: apiTournament.status as 'upcoming' | 'open' | 'in_progress' | 'completed',
+                            createdAt: new Date(apiTournament.createdAt),
+                          });
+                          setRegistrationDialogOpen(true);
+                        }
+                      }}
+                      onViewDetails={(id) => {
+                        const t = tournaments.find(t => t.id === id);
+                        if (t) {
+                          setDetailsTournament(t);
+                          setDetailsDialogOpen(true);
+                        }
+                      }}
                     />
                   ))
                 )}
@@ -373,6 +410,23 @@ export default function Home({ user }: HomeProps) {
           </div>
         </div>
       </div>
+
+      {detailsTournament && (
+        <TournamentDetailsDialog
+          tournament={detailsTournament}
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+        />
+      )}
+
+      {registrationTournament && (
+        <TournamentRegistrationDialog
+          tournament={registrationTournament}
+          isOpen={registrationDialogOpen}
+          onOpenChange={setRegistrationDialogOpen}
+          currentPlayerId={user.id}
+        />
+      )}
     </div>
   );
 }
