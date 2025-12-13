@@ -514,6 +514,7 @@ export default function Tournaments({ isAdmin = false }: TournamentsProps) {
                       onRegister={handleRegister}
                       onViewDetails={handleViewDetails}
                       isAdmin={isAdmin}
+                      isAuthenticated={true}
                       onAssignRanking={handleAssignRanking}
                     />
                   ))}
