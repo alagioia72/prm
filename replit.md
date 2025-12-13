@@ -134,6 +134,7 @@ Il prototipo include:
 - **Import con estensione**: Usare sempre l'estensione `.ts` negli import TypeScript (es: `import { foo } from "./bar.ts"`)
 
 ## Recent Changes
+- 2024-12-13: Fix iscrizione tornei da pagina Tournaments (aggiunto useAuth per passare currentPlayerId)
 - 2024-12-12: Implementata funzionalità edit/delete per tornei (PATCH/DELETE /api/tournaments/:id)
 - 2024-12-12: EditTournamentDialog per modifica tornei con tutti i campi
 - 2024-12-12: TournamentCard mostra pulsanti edit/delete per admin
